@@ -1,34 +1,21 @@
-// App.tsx
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import './App.css';
-
-interface Message {
-    role: 'user' | 'assistant';
-    content: string;
-    sources?: Source[];
-}
-
-interface Source {
-    title: string;
-    url: string;
-    snippet?: string;
-}
-
-interface BookmarkedSource extends Source {
-    timestamp: number;
-    question: string;
-}
-
-interface GroupedBookmarks {
-    [question: string]: BookmarkedSource[];
-}
-
-interface VerifiedConversation {
-    id: string;
-    title: string;
-    messages: Message[];
-    timestamp: number;
-}
+import Sidebar from './components/Sidebar/Sidebar';
+import Header from './components/Header/Header';
+import ChatView from './components/ChatView/ChatView';
+import BookmarksView from './components/BookmarksView/BookmarksView';
+import VerifiedView from './components/VerifiedView/VerifiedView';
+import QuizView from './components/QuizView/QuizView';
+import SaveDialog from './components/SaveDialog/SaveDialog';
+import type {
+    Message,
+    Source,
+    BookmarkedSource,
+    GroupedBookmarks,
+    VerifiedConversation,
+    ViewType,
+    Quiz,
+} from './types';
 
 function App() {
     const [messages, setMessages] = useState<Message[]>([
@@ -39,19 +26,31 @@ function App() {
             sources: [],
         },
     ]);
-    const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
-    const messagesEndRef = useRef<HTMLDivElement>(null);
-    const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [bookmarks, setBookmarks] = useState<BookmarkedSource[]>([]);
     const [verifiedConversations, setVerifiedConversations] = useState<VerifiedConversation[]>([]);
-    const [currentView, setCurrentView] = useState<'chat' | 'bookmarks' | 'verified'>('chat');
+    const [quizzes, setQuizzes] = useState<Quiz[]>([]);
+    const [currentView, setCurrentView] = useState<ViewType>('chat');
     const [showSaveDialog, setShowSaveDialog] = useState(false);
     const [conversationTitle, setConversationTitle] = useState('');
 
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    };
+    // Load saved data on mount
+    useEffect(() => {
+        const savedBookmarks = localStorage.getItem('bookmarks');
+        if (savedBookmarks) {
+            setBookmarks(JSON.parse(savedBookmarks));
+        }
+
+        const savedConversations = localStorage.getItem('verifiedConversations');
+        if (savedConversations) {
+            setVerifiedConversations(JSON.parse(savedConversations));
+        }
+
+        const savedQuizzes = localStorage.getItem('quizzes');
+        if (savedQuizzes) {
+            setQuizzes(JSON.parse(savedQuizzes));
+        }
+    }, []);
 
     const findQuestionForSource = (source: Source): string => {
         for (let i = messages.length - 1; i >= 0; i--) {
@@ -71,29 +70,6 @@ function App() {
         }
         return '기타';
     };
-
-    useEffect(() => {
-        scrollToBottom();
-    }, [messages, loading]);
-
-    useEffect(() => {
-        if (textareaRef.current) {
-            textareaRef.current.style.height = '24px';
-            textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
-        }
-    }, [input]);
-
-    useEffect(() => {
-        const savedBookmarks = localStorage.getItem('bookmarks');
-        if (savedBookmarks) {
-            setBookmarks(JSON.parse(savedBookmarks));
-        }
-
-        const savedConversations = localStorage.getItem('verifiedConversations');
-        if (savedConversations) {
-            setVerifiedConversations(JSON.parse(savedConversations));
-        }
-    }, []);
 
     const toggleBookmark = (source: Source) => {
         const sourceId = `${source.title}-${source.url}`;
@@ -141,6 +117,50 @@ function App() {
         return grouped;
     };
 
+    const handleSendMessage = async (input: string) => {
+        const userMessage: Message = { role: 'user', content: input };
+        setMessages((prev) => [...prev, userMessage]);
+        setLoading(true);
+
+        try {
+            const conversationHistory = messages.map((m) => m.content);
+            conversationHistory.push(input);
+
+            const response = await fetch('http://localhost:8000/api/search', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    question: conversationHistory,
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log('Received data:', data);
+
+            const assistantMessage: Message = {
+                role: 'assistant',
+                content: data.answer,
+                sources: data.sources || [],
+            };
+            setMessages((prev) => [...prev, assistantMessage]);
+        } catch (error) {
+            console.error('Error:', error);
+            const errorMessage: Message = {
+                role: 'assistant',
+                content: '죄송합니다. 오류가 발생했습니다.',
+            };
+            setMessages((prev) => [...prev, errorMessage]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleSaveConversation = () => {
         if (!conversationTitle.trim()) return;
 
@@ -151,7 +171,7 @@ function App() {
                 (m) =>
                     m.role !== 'assistant' ||
                     m.content !==
-                        '안녕하세요! GPT-4o Search Preview 기반 AI 챗봇입니다. 무엇이 궁금하신가요?',
+                        '안녕하세요! 레빗홀과 함께 대화에서 시작되는 학습을 경험해보세요. 무엇이 궁금하신가요?',
             ),
             timestamp: Date.now(),
         };
@@ -205,60 +225,26 @@ function App() {
         URL.revokeObjectURL(url);
     };
 
-    const sendMessage = async () => {
-        if (!input.trim() || loading) return;
-
-        const userMessage: Message = { role: 'user', content: input };
-        setMessages((prev) => [...prev, userMessage]);
-        const currentInput = input;
-        setInput('');
-        setLoading(true);
-
-        try {
-            const conversationHistory = messages.map((m) => m.content);
-            conversationHistory.push(currentInput);
-
-            // 새로운 search 엔드포인트 호출
-            const response = await fetch('http://localhost:8000/api/search', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    question: conversationHistory,
-                }),
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+    const handleAnswerQuiz = (quizId: string, answerIndex: number) => {
+        const updatedQuizzes = quizzes.map((quiz) => {
+            if (quiz.id === quizId) {
+                return {
+                    ...quiz,
+                    userAnswer: answerIndex,
+                    isCorrect: answerIndex === quiz.correctAnswer,
+                };
             }
+            return quiz;
+        });
 
-            const data = await response.json();
-            console.log('Received data:', data);
-
-            const assistantMessage: Message = {
-                role: 'assistant',
-                content: data.answer,
-                sources: data.sources || [],
-            };
-            setMessages((prev) => [...prev, assistantMessage]);
-        } catch (error) {
-            console.error('Error:', error);
-            const errorMessage: Message = {
-                role: 'assistant',
-                content: '죄송합니다. 오류가 발생했습니다.',
-            };
-            setMessages((prev) => [...prev, errorMessage]);
-        } finally {
-            setLoading(false);
-        }
+        setQuizzes(updatedQuizzes);
+        localStorage.setItem('quizzes', JSON.stringify(updatedQuizzes));
     };
 
-    const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            sendMessage();
-        }
+    const handleDeleteQuiz = (quizId: string) => {
+        const updatedQuizzes = quizzes.filter((quiz) => quiz.id !== quizId);
+        setQuizzes(updatedQuizzes);
+        localStorage.setItem('quizzes', JSON.stringify(updatedQuizzes));
     };
 
     const groupedBookmarks = getGroupedBookmarks();
@@ -270,392 +256,65 @@ function App() {
 
     return (
         <div className="app">
-            {/* Sidebar */}
-            <aside className="sidebar">
-                <div className="sidebar-header">
-                    <div className="logo-container">
-                        <div className="logo-icon">🐰</div>
-                        <h1 className="logo">레빗홀</h1>
-                    </div>
-                    <p className="subtitle">대화에서 시작되는 출처 기반 학습</p>
-                </div>
+            <Sidebar
+                currentView={currentView}
+                onViewChange={setCurrentView}
+                bookmarksCount={bookmarks.length}
+                conversationsCount={verifiedConversations.length}
+            />
 
-                <nav className="nav">
-                    <button
-                        className={`nav-button ${currentView === 'chat' ? 'active' : ''}`}
-                        onClick={() => setCurrentView('chat')}
-                    >
-                        <svg
-                            width="20"
-                            height="20"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                        >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
-                            />
-                        </svg>
-                        <span>챗봇</span>
-                    </button>
-
-                    <button
-                        className={`nav-button ${currentView === 'bookmarks' ? 'active' : ''}`}
-                        onClick={() => setCurrentView('bookmarks')}
-                    >
-                        <svg
-                            width="20"
-                            height="20"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                        >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
-                            />
-                        </svg>
-                        <span>북마크 ({bookmarks.length})</span>
-                    </button>
-
-                    <button
-                        className={`nav-button ${currentView === 'verified' ? 'active' : ''}`}
-                        onClick={() => setCurrentView('verified')}
-                    >
-                        <svg
-                            width="20"
-                            height="20"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                        >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                            />
-                        </svg>
-                        <span>검증된 대화 ({verifiedConversations.length})</span>
-                    </button>
-                </nav>
-
-                <div className="sidebar-footer">
-                    <div className="info-box">
-                        <p className="info-title">🔍 손쉬운 출처 탐색</p>
-                        <p className="info-desc">답변의 근거를 직접 확인하세요.</p>
-                    </div>
-                </div>
-            </aside>
-
-            {/* Main Content */}
             <main className="main">
-                <header className="header">
-                    <h2>
-                        {currentView === 'chat'
-                            ? '챗봇'
-                            : currentView === 'bookmarks'
-                            ? '북마크'
-                            : '대화 내용'}
-                    </h2>
-                    {currentView === 'chat' && messages.length > 1 && (
-                        <button
-                            className="save-conversation-btn"
-                            onClick={() => setShowSaveDialog(true)}
-                        >
-                            대화 저장
-                        </button>
-                    )}
-                </header>
+                <Header
+                    currentView={currentView}
+                    showSaveButton={currentView === 'chat' && messages.length > 1}
+                    onSaveClick={() => setShowSaveDialog(true)}
+                />
 
                 {currentView === 'chat' && (
-                    <div className="chat-container">
-                        <div className="messages">
-                            {messages.map((msg, idx) => (
-                                <div key={idx} className="message-group">
-                                    <div className={`message ${msg.role}`}>
-                                        <div className="message-bubble">
-                                            <p>{msg.content}</p>
-                                        </div>
-                                    </div>
-
-                                    {msg.sources && msg.sources.length > 0 && (
-                                        <div className="cards-container">
-                                            <p className="cards-title">📚 참고 출처</p>
-                                            <div className="cards">
-                                                {msg.sources.map((source, sourceIdx) => (
-                                                    <div key={sourceIdx} className="card">
-                                                        <div className="card-content">
-                                                            <p className="card-title">
-                                                                {source.title}
-                                                            </p>
-                                                            {source.snippet && (
-                                                                <p className="card-summary">
-                                                                    {source.snippet}
-                                                                </p>
-                                                            )}
-                                                        </div>
-                                                        <div className="card-footer">
-                                                            <button
-                                                                className={`bookmark-button ${
-                                                                    isSourceBookmarked(source)
-                                                                        ? 'bookmarked'
-                                                                        : ''
-                                                                }`}
-                                                                onClick={() =>
-                                                                    toggleBookmark(source)
-                                                                }
-                                                                title={
-                                                                    isSourceBookmarked(source)
-                                                                        ? '북마크 해제'
-                                                                        : '북마크 추가'
-                                                                }
-                                                            >
-                                                                {isSourceBookmarked(source)
-                                                                    ? '★'
-                                                                    : '☆'}
-                                                            </button>
-                                                            <a
-                                                                href={source.url}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                className="card-link"
-                                                            >
-                                                                원문 보기
-                                                            </a>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
-
-                            {loading && (
-                                <div className="message-group">
-                                    <div className="message assistant">
-                                        <div className="message-bubble">
-                                            <div className="typing">
-                                                <span></span>
-                                                <span></span>
-                                                <span></span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            <div ref={messagesEndRef} />
-                        </div>
-
-                        <div className="input-area">
-                            <div className="input-wrapper">
-                                <textarea
-                                    ref={textareaRef}
-                                    value={input}
-                                    onChange={(e) => setInput(e.target.value)}
-                                    onKeyDown={handleKeyDown}
-                                    placeholder="무엇이든 질문해보세요..."
-                                    disabled={loading}
-                                    rows={1}
-                                />
-                                <button
-                                    onClick={sendMessage}
-                                    disabled={loading || !input.trim()}
-                                    className="send-button"
-                                >
-                                    <svg
-                                        width="20"
-                                        height="20"
-                                        viewBox="0 0 24 24"
-                                        fill="currentColor"
-                                    >
-                                        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-                                    </svg>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+                    <ChatView
+                        messages={messages}
+                        loading={loading}
+                        onSendMessage={handleSendMessage}
+                        isBookmarked={isSourceBookmarked}
+                        onToggleBookmark={toggleBookmark}
+                    />
                 )}
 
                 {currentView === 'bookmarks' && (
-                    <div className="bookmarks-view">
-                        <h3>저장된 출처</h3>
-                        {bookmarks.length === 0 ? (
-                            <p className="empty-message">저장된 북마크가 없습니다.</p>
-                        ) : (
-                            <div className="bookmark-groups">
-                                {questionGroups.map((question, groupIdx) => (
-                                    <div key={groupIdx} className="bookmark-group">
-                                        <h4 className="group-title">
-                                            <span className="question-icon">Q</span>
-                                            {question}
-                                        </h4>
-                                        <div className="cards">
-                                            {groupedBookmarks[question].map((source, idx) => (
-                                                <div key={idx} className="card">
-                                                    <div className="card-content">
-                                                        <p className="card-title">{source.title}</p>
-                                                        {source.snippet && (
-                                                            <p className="card-summary">
-                                                                {source.snippet}
-                                                            </p>
-                                                        )}
-                                                    </div>
-                                                    <div className="card-footer">
-                                                        <button
-                                                            className="bookmark-button bookmarked"
-                                                            onClick={() => toggleBookmark(source)}
-                                                            title="북마크 해제"
-                                                        >
-                                                            ★
-                                                        </button>
-                                                        <a
-                                                            href={source.url}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="card-link"
-                                                        >
-                                                            원문 보기
-                                                        </a>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
+                    <BookmarksView
+                        groupedBookmarks={groupedBookmarks}
+                        questionGroups={questionGroups}
+                        onToggleBookmark={toggleBookmark}
+                    />
                 )}
 
                 {currentView === 'verified' && (
-                    <div className="verified-view">
-                        <h3>저장된 대화</h3>
-                        {verifiedConversations.length === 0 ? (
-                            <p className="empty-message">저장된 대화가 없습니다.</p>
-                        ) : (
-                            <div className="verified-list">
-                                {verifiedConversations
-                                    .sort((a, b) => b.timestamp - a.timestamp)
-                                    .map((conv) => (
-                                        <div key={conv.id} className="verified-item">
-                                            <div className="verified-header">
-                                                <h4>{conv.title}</h4>
-                                                <div className="verified-actions">
-                                                    <button
-                                                        className="action-btn download"
-                                                        onClick={() => downloadAsMarkdown(conv)}
-                                                        title="마크다운으로 다운로드"
-                                                    >
-                                                        <svg
-                                                            width="18"
-                                                            height="18"
-                                                            viewBox="0 0 24 24"
-                                                            fill="none"
-                                                            stroke="currentColor"
-                                                        >
-                                                            <path
-                                                                strokeLinecap="round"
-                                                                strokeLinejoin="round"
-                                                                strokeWidth={2}
-                                                                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"
-                                                            />
-                                                        </svg>
-                                                    </button>
-                                                    <button
-                                                        className="action-btn delete"
-                                                        onClick={() => deleteConversation(conv.id)}
-                                                        title="삭제"
-                                                    >
-                                                        <svg
-                                                            width="18"
-                                                            height="18"
-                                                            viewBox="0 0 24 24"
-                                                            fill="none"
-                                                            stroke="currentColor"
-                                                        >
-                                                            <path
-                                                                strokeLinecap="round"
-                                                                strokeLinejoin="round"
-                                                                strokeWidth={2}
-                                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                                            />
-                                                        </svg>
-                                                    </button>
-                                                </div>
-                                            </div>
-                                            <p className="verified-date">
-                                                {new Date(conv.timestamp).toLocaleString('ko-KR')}
-                                            </p>
-                                            <div className="verified-preview">
-                                                {conv.messages.slice(0, 2).map((msg, idx) => (
-                                                    <div key={idx} className="preview-message">
-                                                        <strong>
-                                                            {msg.role === 'user'
-                                                                ? '질문:'
-                                                                : '답변:'}
-                                                        </strong>
-                                                        <span>
-                                                            {msg.content.substring(0, 100)}...
-                                                        </span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    ))}
-                            </div>
-                        )}
-                    </div>
+                    <VerifiedView
+                        conversations={verifiedConversations}
+                        onDelete={deleteConversation}
+                        onDownload={downloadAsMarkdown}
+                    />
+                )}
+
+                {currentView === 'quiz' && (
+                    <QuizView
+                        quizzes={quizzes}
+                        onAnswerQuiz={handleAnswerQuiz}
+                        onDeleteQuiz={handleDeleteQuiz}
+                    />
                 )}
             </main>
 
-            {/* Save Dialog */}
-            {showSaveDialog && (
-                <div className="dialog-overlay" onClick={() => setShowSaveDialog(false)}>
-                    <div className="dialog" onClick={(e) => e.stopPropagation()}>
-                        <h3>대화 저장</h3>
-                        <p className="dialog-desc">이 대화 내용을 검증된 대화로 저장합니다.</p>
-                        <input
-                            type="text"
-                            className="dialog-input"
-                            placeholder="대화 제목을 입력하세요"
-                            value={conversationTitle}
-                            onChange={(e) => setConversationTitle(e.target.value)}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                    handleSaveConversation();
-                                }
-                            }}
-                            autoFocus
-                        />
-                        <div className="dialog-actions">
-                            <button
-                                className="dialog-btn cancel"
-                                onClick={() => {
-                                    setShowSaveDialog(false);
-                                    setConversationTitle('');
-                                }}
-                            >
-                                취소
-                            </button>
-                            <button
-                                className="dialog-btn confirm"
-                                onClick={handleSaveConversation}
-                                disabled={!conversationTitle.trim()}
-                            >
-                                저장
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <SaveDialog
+                isOpen={showSaveDialog}
+                title={conversationTitle}
+                onTitleChange={setConversationTitle}
+                onSave={handleSaveConversation}
+                onCancel={() => {
+                    setShowSaveDialog(false);
+                    setConversationTitle('');
+                }}
+            />
         </div>
     );
 }
