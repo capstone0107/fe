@@ -1,5 +1,6 @@
 // App.tsx
 import { useState, useRef, useEffect } from 'react';
+import ConversationGraph from './conversationGraph';
 import './App.css';
 
 interface Message {
@@ -49,6 +50,10 @@ function App() {
     const [showSaveDialog, setShowSaveDialog] = useState(false);
     const [conversationTitle, setConversationTitle] = useState('');
 
+    const [showGraphModal, setShowGraphModal] = useState(false);
+    const [graphData, setGraphData] = useState<any>(null); // Type as 'any' or define GraphData interface
+    const [isGraphLoading, setIsGraphLoading] = useState(false);
+    
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     };
@@ -203,6 +208,38 @@ function App() {
         a.download = `${conversation.title}.md`;
         a.click();
         URL.revokeObjectURL(url);
+    };
+
+    const handleVisualize = async (conversation: VerifiedConversation) => {
+        setIsGraphLoading(true);
+        setShowGraphModal(true); // Show modal with loading state immediately
+        setGraphData(null); // Reset previous data
+
+        try {
+            const response = await fetch('http://localhost:8000/api/graph', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    messages: conversation.messages,
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log('Graph Data:', data);
+            setGraphData(data);
+        } catch (error) {
+            console.error('Error fetching graph:', error);
+            alert('그래프를 불러오는데 실패했습니다.');
+            setShowGraphModal(false);
+        } finally {
+            setIsGraphLoading(false);
+        }
     };
 
     const sendMessage = async () => {
@@ -549,6 +586,24 @@ function App() {
                                             <div className="verified-header">
                                                 <h4>{conv.title}</h4>
                                                 <div className="verified-actions">
+                                                    {/* New Visualize Button */}
+                                                    <button 
+                                                        className="action-btn visualize"
+                                                        onClick={() => handleVisualize(conv)}
+                                                        title="지식 그래프 보기"
+                                                    >
+                                                        {/* Network/Graph Icon */}
+                                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                            <circle cx="6" cy="6" r="3"></circle>
+                                                            <circle cx="6" cy="18" r="3"></circle>
+                                                            <line x1="20" y1="4" x2="8.12" y2="15.88"></line>
+                                                            <line x1="14.47" y1="14.48" x2="20" y2="20"></line>
+                                                            <line x1="8.12" y1="8.12" x2="12" y2="12"></line>
+                                                            <circle cx="18" cy="18" r="3"></circle>
+                                                            <circle cx="18" cy="6" r="3"></circle>
+                                                            <line x1="6" y1="9" x2="6" y2="15"></line>
+                                                        </svg>
+                                                    </button>
                                                     <button
                                                         className="action-btn download"
                                                         onClick={() => downloadAsMarkdown(conv)}
@@ -656,8 +711,32 @@ function App() {
                     </div>
                 </div>
             )}
+            {/* Graph Modal (NEW) */}
+            {showGraphModal && (
+                <div className="dialog-overlay" onClick={() => setShowGraphModal(false)}>
+                    <div className="dialog graph-dialog" onClick={(e) => e.stopPropagation()}>
+                        <h3>지식 그래프</h3>
+                        <div className="graph-content">
+                            {isGraphLoading ? (
+                                <div className="loading-state">
+                                    <div className="typing"><span></span><span></span><span></span></div>
+                                    <p>AI가 대화를 분석하여 그래프를 그리고 있습니다...</p>
+                                </div>
+                            ) : graphData ? (
+                                <ConversationGraph 
+                                    data={graphData} 
+                                    onClose={() => setShowGraphModal(false)} 
+                                />
+                            ) : (
+                                <p className="error-message">데이터를 불러오지 못했습니다.</p>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
 
 export default App;
+

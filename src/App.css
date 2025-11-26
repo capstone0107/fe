@@ -681,3 +681,133 @@ textarea::placeholder {
     opacity: 0.4;
     cursor: not-allowed;
 }
+
+/* Graph Modal Styles */
+.graph-dialog {
+    width: 95vw !important;
+    height: 90vh !important;
+    max-width: 1600px !important;
+    display: flex;
+    flex-direction: column;
+}
+
+.graph-content {
+    flex: 1;
+    background: #f8f9fa;
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative; /* For absolute positioning of panel/buttons */
+    border: 1px solid var(--border);
+}
+
+.close-graph-btn {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: white;
+    border: 1px solid var(--border);
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    z-index: 10;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.close-graph-btn:hover {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+/* Node Details Side Panel */
+.node-details-panel {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    width: 320px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    border: 1px solid var(--border);
+    z-index: 10; /* Ensure it sits on top of the graph canvas */
+    padding: 16px;
+    animation: slideIn 0.2s ease-out;
+}
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translateX(-20px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+}
+
+.panel-header h4 {
+    margin: 0;
+    font-size: 16px;
+    color: var(--accent);
+    font-weight: 700;
+}
+
+.close-panel-btn {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: #999;
+    padding: 0;
+    line-height: 1;
+}
+
+.close-panel-btn:hover {
+    color: var(--text-primary);
+}
+
+.panel-description {
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+}
+
+.panel-badge {
+    display: inline-block;
+    background: #eff6ff;
+    color: var(--accent);
+    font-size: 11px;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-weight: 500;
+}
+
+/* Loading State specific */
+.loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--text-secondary);
+}
+
+.loading-state p {
+    margin-top: 1rem;
+    font-size: 0.95rem;
+}
+
+/* Visualize Button specific style */
+.action-btn.visualize {
+    color: #8b5cf6; /* Violet/Purple color for graph actions */
+}
+
+.action-btn.visualize:hover {
+    background: #f5f3ff;
+    border-color: #8b5cf6;
+}
