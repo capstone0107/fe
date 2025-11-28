@@ -37,7 +37,6 @@
     /* 1.1배 커지면서 왼쪽으로 5도 갸웃 */
     transform: scale(1.1) rotate(-5deg);
 }
-/* --- [수정된 부분 끝] --- */
 
 .login-header p {
     font-size: 14px;
