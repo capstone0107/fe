@@ -13,20 +13,22 @@
 
 .logo-container {
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     gap: 8px;
     margin-bottom: 4px;
 }
 
 .logo-icon {
+    width: 82px;
     font-size: 32px;
     line-height: 1;
 }
 
 .logo {
-    font-size: 1.25rem;
+    font-size: 1.75rem;
     font-weight: 700;
     color: var(--accent);
+    margin-top: auto;
     margin: 0;
 }
 
