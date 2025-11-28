@@ -7,7 +7,7 @@ import BookmarksView from '../components/BookmarksView/BookmarksView';
 import VerifiedView from '../components/VerifiedView/VerifiedView';
 import QuizView from '../components/QuizView/QuizView';
 import SaveDialog from '../components/SaveDialog/SaveDialog';
-import { FocusService } from '../services/focusService';
+// apiClient import 추가 (경로는 프로젝트 구조에 맞게 조정해주세요)
 import type {
     Message,
     Source,
@@ -17,6 +17,7 @@ import type {
     ViewType,
     Quiz,
 } from '../types';
+import apiClient from '../api/client';
 
 // UUID 생성 함수
 function generateId(): string {
@@ -300,6 +301,30 @@ function MainPage() {
     // Quiz States
     const [quizzes, setQuizzes] = useState<Quiz[]>([]);
 
+    useEffect(() => {
+        startNewConversation();
+    }, []);
+
+
+    const startNewConversation = async () => {
+        const newId = `auto-${Date.now()}`;
+        
+        try {
+            // ⭐ apiClient로 변경
+            const response = await apiClient.post<{ conversation_id: string }>('/api/search/start', {
+                conversation_id: newId 
+            });
+            
+            const data = response.data;
+            setCurrentConversationId(data.conversation_id);
+            console.log('✨ 새 대화 시작:', data.conversation_id);
+        } catch (error) {
+            console.error('대화 시작 실패:', error);
+            // fallback: 로컬에서 ID 생성
+            setCurrentConversationId(newId);
+        }
+    };
+
     // Load saved data on mount
     useEffect(() => {
         const savedBookmarks = localStorage.getItem('bookmarks');
@@ -415,7 +440,6 @@ function MainPage() {
     };
 
     const handleSendMessage = async (input: string) => {
-        // Focus 선택 중이면 현재 대화로 전환
         if (selectedConversation) {
             setSelectedConversation(null);
             setSelectedFocus(null);
@@ -430,48 +454,24 @@ function MainPage() {
         setLoading(true);
 
         try {
-            const conversationHistory = messages.map((m) => m.content);
-            conversationHistory.push(input);
-
-            const response = await fetch('http://127.0.0.1:8000/api/search', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    question: conversationHistory,
-                    conversation_id: currentConversationId, // ⭐ 있으면 전달, 없으면 null
-                    auto_save: true, // ⭐ 자동 저장 활성화
-                }),
+            // ⭐ apiClient로 변경
+            const response = await apiClient.post<{ message_id: string; answer: string; sources: Source[] }>('/api/search/query', {
+                conversation_id: currentConversationId,
+                question: input
             });
 
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
+            // axios는 !response.ok 체크 불필요 (에러 시 catch로 이동)
+            const data = response.data;
 
-            const data = await response.json();
-
-            // ⭐ 백엔드에서 받은 conversation_id 저장
-            if (data.conversation_id && !currentConversationId) {
-                console.log('✅ 새 대화 ID:', data.conversation_id);
-                setCurrentConversationId(data.conversation_id);
-            }
-
-            // ⭐ 자동 저장 메타데이터 로깅
-            if (data.metadata?.auto_saved) {
-                console.log('💾 백그라운드 저장 시작:', {
-                    conversation_id: data.conversation_id,
-                    message_count: data.metadata.message_count,
-                });
-            }
-
+            // ⭐ message_id는 백엔드에서 생성됨
             const assistantMessage: Message = {
-                id: generateId(),
+                id: data.message_id, // 백엔드에서 받은 ID 사용
                 role: 'assistant',
                 content: data.answer,
                 sources: data.sources || [],
             };
             setMessages((prev) => [...prev, assistantMessage]);
+            
         } catch (error) {
             console.error('Error:', error);
             const errorMessage: Message = {
@@ -488,116 +488,71 @@ function MainPage() {
     const handleSaveConversation = async () => {
         if (!conversationTitle.trim()) return;
 
-        // ⭐ 백엔드 ID가 있으면 재사용, 없으면 새로 생성
-        const conversationId = currentConversationId || Date.now().toString();
-
         const conversationMessages = messages.filter(
             (m) =>
                 m.role !== 'assistant' ||
-                m.content !==
-                    '안녕하세요! 레빗홀과 함께 대화에서 시작되는 학습을 경험해보세요. 무엇이 궁금하신가요?',
+                m.content !== '안녕하세요! 레빗홀과 함께 대화에서 시작되는 학습을 경험해보세요. 무엇이 궁금하신가요?',
         );
 
         try {
-            // ⭐ currentConversationId가 있으면 이미 백그라운드에서 저장됨
-            if (currentConversationId) {
-                console.log('✅ 백엔드에 이미 저장된 대화:', currentConversationId);
+            // ⭐ apiClient로 변경
+            // focuses 타입 추론을 위해 any 또는 구체적 타입 사용 가능
+            const response = await apiClient.post<{ focuses: any[] }>('/api/search/finalize', {
+                conversation_id: currentConversationId,
+                user_title: conversationTitle
+            });
 
-                // 저장 상태 확인 (선택사항)
-                const statusResponse = await fetch(
-                    `http://127.0.0.1:8000/api/conversation/${currentConversationId}/status`,
-                );
-                const status = await statusResponse.json();
+            const data = response.data;
+            console.log('✅ 대화 저장 완료:', data);
 
-                if (status.saved) {
-                    console.log('💾 백그라운드 저장 완료:', {
-                        title: status.title,
-                        focus_count: status.focus_count,
-                    });
-
-                    // 백엔드에서 대화 가져오기 (Focus 포함)
-                    const convResponse = await fetch(
-                        `http://127.0.0.1:8000/api/conversation/${currentConversationId}`,
-                    );
-                    const convData = await convResponse.json();
-
-                    // 백엔드 데이터로 localStorage 업데이트
-                    const newConversation: VerifiedConversation = {
-                        id: conversationId,
-                        title: conversationTitle, // 사용자가 입력한 제목 사용
-                        messages: conversationMessages,
-                        timestamp: Date.now(),
-                        focuses: convData.conversation.focuses || [],
-                    };
-
-                    const updatedConversations = [...verifiedConversations, newConversation];
-                    setVerifiedConversations(updatedConversations);
-                    localStorage.setItem(
-                        'verifiedConversations',
-                        JSON.stringify(updatedConversations),
-                    );
-
-                    // 현재 대화 초기화
-                    setCurrentConversationId(null);
-                    setShowSaveDialog(false);
-                    setConversationTitle('');
-                    setCurrentView('verified');
-
-                    return;
-                } else {
-                    console.log('⏳ 백그라운드 저장 처리 중...');
-                }
-            }
-
-            // ⭐ currentConversationId가 없거나 아직 저장 안 된 경우
-            // Focus 분류 API 호출 (기존 로직)
-            const classifyResult = await FocusService.classifyConversation(
-                conversationId,
-                conversationMessages,
-            );
-
-            console.log('Focus 분류 완료:', classifyResult);
-
+            // 새로운 대화 객체 생성
             const newConversation: VerifiedConversation = {
-                id: conversationId,
+                id: currentConversationId!,
                 title: conversationTitle,
                 messages: conversationMessages,
                 timestamp: Date.now(),
-                focuses: classifyResult.focuses || [],
+                focuses: data.focuses || [],
             };
 
             const updatedConversations = [...verifiedConversations, newConversation];
             setVerifiedConversations(updatedConversations);
             localStorage.setItem('verifiedConversations', JSON.stringify(updatedConversations));
 
-            // 현재 대화 초기화
+            // 상태 초기화 및 새 대화 시작
             setCurrentConversationId(null);
             setShowSaveDialog(false);
             setConversationTitle('');
+            setMessages([
+                {
+                    id: generateId(),
+                    role: 'assistant',
+                    content: '안녕하세요! 레빗홀과 함께 대화에서 시작되는 학습을 경험해보세요. 무엇이 궁금하신가요?',
+                    sources: [],
+                },
+            ]);
             setCurrentView('verified');
+            
+            // 새 대화 시작
+            startNewConversation();
+            
         } catch (error) {
             console.error('저장 실패:', error);
-
-            // 실패해도 localStorage에는 저장
-            const newConversation: VerifiedConversation = {
-                id: conversationId,
-                title: conversationTitle,
-                messages: conversationMessages,
-                timestamp: Date.now(),
-                focuses: [],
-            };
-
-            const updatedConversations = [...verifiedConversations, newConversation];
-            setVerifiedConversations(updatedConversations);
-            localStorage.setItem('verifiedConversations', JSON.stringify(updatedConversations));
-
-            setCurrentConversationId(null);
-            setShowSaveDialog(false);
-            setConversationTitle('');
-            setCurrentView('verified');
-
-            alert('대화는 저장되었으나 Focus 분류에 실패했습니다.');
+            alert('대화 저장에 실패했습니다. 다시 시도해주세요.');
         }
+    };
+
+    const handleNewConversation = () => {
+        setMessages([
+            {
+                id: generateId(),
+                role: 'assistant',
+                content: '안녕하세요! 레빗홀과 함께 대화에서 시작되는 학습을 경험해보세요. 무엇이 궁금하신가요?',
+                sources: [],
+            },
+        ]);
+        setSelectedConversation(null);
+        setSelectedFocus(null);
+        startNewConversation();
     };
 
     const deleteConversation = (id: string) => {
@@ -640,13 +595,15 @@ function MainPage() {
         URL.revokeObjectURL(url);
     };
 
-    // Focus Selection Handler
     const handleFocusSelect = (conversationId: string, focusId: string) => {
+        console.log('Clicked Conversation ID:', conversationId); // 요구사항 2
+        console.log('Clicked Focus ID:', focusId); // 요구사항 2
+        
         setSelectedConversation(conversationId);
         setSelectedFocus(focusId);
-        setCurrentView('chat');
+        
+        // setCurrentView('chat'); // 요구사항 1: 대화창 활성화(화면 전환) 코드 제거
     };
-
     // Quiz Management
     const handleAnswerQuiz = (quizId: string, answerIndex: number) => {
         const updatedQuizzes = quizzes.map((quiz) => {
@@ -707,6 +664,7 @@ function MainPage() {
                 selectedConversationId={selectedConversation}
                 selectedFocusId={selectedFocus}
                 onFocusSelect={handleFocusSelect}
+                onNewConversation={handleNewConversation}
             />
 
             <main className="main">

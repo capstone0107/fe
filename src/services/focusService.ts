@@ -1,6 +1,5 @@
+import apiClient from '../api/client';
 import type { ClassifyResponse, FocusData, Focus, SearchResponse } from '../types/focus';
-
-const API_BASE_URL = 'http://127.0.0.1:8000/api';
 
 export interface Message {
     id: string;
@@ -18,63 +17,40 @@ export class FocusService {
     ): Promise<ClassifyResponse> {
         console.log("Classifying conversation with ID:", conversationId);
         console.log("Messages:", messages);
-        const response = await fetch(`${API_BASE_URL}/focus/classify`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                conversation_id: conversationId,
-                messages: messages.map(m => ({
-                    role: m.role,
-                    content: m.content
-                })),
-            }),
+
+        // apiClient의 baseURL이 'http://127.0.0.1:8000/'이므로 '/api' prefix를 붙여줍니다.
+        const response = await apiClient.post<ClassifyResponse>('/api/focus/classify', {
+            conversation_id: conversationId,
+            messages: messages.map(m => ({
+                role: m.role,
+                content: m.content
+            })),
         });
 
-        if (!response.ok) {
-            throw new Error(`분류 실패: ${response.status}`);
-        }
-
-        return response.json();
+        return response.data;
     }
 
     /**
      * 전체 Focus 조회
      */
     static async getAllFocuses(): Promise<FocusData> {
-        const response = await fetch(`${API_BASE_URL}/focus/all`);
-
-        if (!response.ok) {
-            throw new Error(`Focus 조회 실패: ${response.status}`);
-        }
-
-        return response.json();
+        const response = await apiClient.get<FocusData>('/api/focus/all');
+        return response.data;
     }
 
     /**
      * 특정 Focus 조회
      */
     static async getFocus(focusId: string): Promise<{ focus: Focus; type: string }> {
-        const response = await fetch(`${API_BASE_URL}/focus/${focusId}`);
-
-        if (!response.ok) {
-            throw new Error(`Focus 조회 실패: ${response.status}`);
-        }
-
-        return response.json();
+        const response = await apiClient.get<{ focus: Focus; type: string }>(`/api/focus/${focusId}`);
+        return response.data;
     }
 
     /**
      * 키워드 검색
      */
     static async searchByKeyword(keyword: string): Promise<SearchResponse> {
-        const response = await fetch(`${API_BASE_URL}/focus/search/keyword/${encodeURIComponent(keyword)}`);
-
-        if (!response.ok) {
-            throw new Error(`검색 실패: ${response.status}`);
-        }
-
-        return response.json();
+        const response = await apiClient.get<SearchResponse>(`/api/focus/search/keyword/${encodeURIComponent(keyword)}`);
+        return response.data;
     }
 }

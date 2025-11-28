@@ -19,6 +19,7 @@ interface SidebarProps {
     selectedConversationId: string | null;
     selectedFocusId: string | null;
     onFocusSelect: (conversationId: string, focusId: string) => void;
+    onNewConversation: () => void; 
 }
 
 export default function Sidebar({
@@ -34,22 +35,29 @@ export default function Sidebar({
     selectedConversationId,
     selectedFocusId,
     onFocusSelect,
+    onNewConversation,
 }: SidebarProps) {
     return (
         <aside className="sidebar">
             <div className="sidebar-header">
                 <div className="logo-container">
-                    <img src="/logo.png" alt="레빗홀 로고" className="logo-icon" />
+                    <div className="logo-icon">🐰</div>
                     <h1 className="logo">레빗홀</h1>
                 </div>
-                <p className="subtitle">대화에서 시작되는 출처 기반의 학습</p>
+                <p className="subtitle">대화에서 시작되는 출처 기반 학습</p>
             </div>
+            
+            {/* ⭐ [수정됨] 요구사항 3: '새 대화' 버튼(.new-chat-btn) 삭제 */}
 
             {/* 기본 네비게이션 */}
             <nav className="nav">
+                {/* ⭐ [수정됨] 요구사항 3: 챗봇 버튼 클릭 시 새 대화 생성 + 뷰 전환 */}
                 <button
                     className={`nav-button ${currentView === 'chat' ? 'active' : ''}`}
-                    onClick={() => onViewChange('chat')}
+                    onClick={() => {
+                        onNewConversation(); // 새 대화 생성
+                        onViewChange('chat'); // 챗봇 뷰로 이동
+                    }}
                 >
                     <svg
                         width="20"
@@ -184,6 +192,7 @@ export default function Sidebar({
     );
 }
 
+// ConversationItem 및 하위 컴포넌트는 기존 코드 유지
 interface ConversationItemProps {
     conversation: VerifiedConversation;
     isSelected: boolean;

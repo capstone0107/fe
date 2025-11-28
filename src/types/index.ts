@@ -26,13 +26,21 @@ export interface ConversationFocus {
     messageIds: string[];  // 메시지 고유 ID 배열
     questionTags: string[];
 }
+export interface Conversation {
+    id: string;
+    title?: string;  // optional로 변경
+    isSaved: boolean;  // ✅ 추가: 저장 여부
+    messageCount: number;
+    timestamp: number;
+}
 
 export interface VerifiedConversation {
     id: string;
     title: string;
     messages: Message[];
     timestamp: number;
-    focuses?: ConversationFocus[];  // 추가: Focus 정보
+    focuses?: ConversationFocus[];
+    isSaved?: boolean;  // ✅ 추가: 저장 여부 플래그
 }
 
 export interface Quiz {
