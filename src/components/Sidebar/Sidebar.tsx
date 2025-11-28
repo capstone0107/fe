@@ -1,18 +1,24 @@
+import { useState, useEffect } from 'react';
 import './Sidebar.css';
-import type { ViewType } from '../../types';
-import type { ConversationFocus, ConversationViewType } from '../../types/conversation';
+import type { ViewType, VerifiedConversation } from '../../types';
 
 interface SidebarProps {
     currentView: ViewType;
     onViewChange: (view: ViewType) => void;
     bookmarksCount: number;
     conversationsCount: number;
-    // 대화 내용 관련 props
-    mainTopic?: string;
-    focuses?: ConversationFocus[];
-    focusView?: ConversationViewType;
-    onFocusViewChange?: (view: ConversationViewType) => void;
-    totalMessageCount?: number;
+
+    // 현재 대화 관련
+    hasCurrentConversation: boolean;
+    currentMessageCount: number;
+    isCurrentConversationSelected: boolean;
+    onCurrentConversationSelect: () => void;
+
+    // 저장된 대화 목록
+    savedConversations: VerifiedConversation[];
+    selectedConversationId: string | null;
+    selectedFocusId: string | null;
+    onFocusSelect: (conversationId: string, focusId: string) => void;
 }
 
 export default function Sidebar({
@@ -20,11 +26,14 @@ export default function Sidebar({
     onViewChange,
     bookmarksCount,
     conversationsCount,
-    mainTopic,
-    focuses = [],
-    focusView = 'all',
-    onFocusViewChange,
-    totalMessageCount = 0,
+    hasCurrentConversation,
+    currentMessageCount,
+    isCurrentConversationSelected,
+    onCurrentConversationSelect,
+    savedConversations,
+    selectedConversationId,
+    selectedFocusId,
+    onFocusSelect,
 }: SidebarProps) {
     return (
         <aside className="sidebar">
@@ -123,56 +132,47 @@ export default function Sidebar({
                 </button>
             </nav>
 
-            {/* 대화 목록 섹션 - 항상 표시 */}
-            {mainTopic && onFocusViewChange && (
-                <div className="conversation-list-section">
-                    <div className="conversation-list-header">
-                        <span className="conversation-list-title">대화 내용</span>
-                    </div>
+            {/* 대화 목록 섹션 */}
+            <div className="conversation-list-section">
+                <div className="conversation-list-header">
+                    <span className="conversation-list-title">대화 목록</span>
+                </div>
 
-                    <div className="conversation-list">
-                        {/* 전체 대화 */}
+                <div className="conversation-list">
+                    {/* 현재 대화 */}
+                    {hasCurrentConversation && (
                         <button
-                            className={`conversation-item ${focusView === 'all' ? 'active' : ''}`}
-                            onClick={() => onFocusViewChange('all')}
+                            className={`conversation-item ${
+                                isCurrentConversationSelected ? 'active' : ''
+                            }`}
+                            onClick={onCurrentConversationSelect}
                         >
                             <div className="conversation-item-content">
-                                <span className="conversation-item-title">{mainTopic}</span>
-                                <span className="conversation-item-badge">
-                                    전체 대화 · {totalMessageCount}개 메시지
-                                </span>
+                                <div className="conversation-item-header">
+                                    <span className="conversation-item-title">현재 대화</span>
+                                    <span className="conversation-item-count">
+                                        {currentMessageCount}개
+                                    </span>
+                                </div>
+                                <span className="conversation-item-badge">진행 중</span>
                             </div>
                         </button>
+                    )}
 
-                        {/* Focus 목록 */}
-                        {focuses.map((focus) => (
-                            <button
-                                key={focus.id}
-                                className={`conversation-item ${
-                                    focusView === focus.id ? 'active' : ''
-                                }`}
-                                onClick={() => onFocusViewChange(focus.id)}
-                            >
-                                <div className="conversation-item-content">
-                                    <div className="conversation-item-header">
-                                        <span className="conversation-item-title">{focus.name}</span>
-                                        <span className="conversation-item-count">
-                                            {focus.messageIds.length}개
-                                        </span>
-                                    </div>
-                                    <div className="conversation-item-tags">
-                                        {focus.questionTags.map((tag, idx) => (
-                                            <span key={idx} className="conversation-tag">
-                                                "{tag}"
-                                            </span>
-                                        ))}
-                                    </div>
-                                </div>
-                            </button>
+                    {/* 저장된 대화 목록 */}
+                    {savedConversations
+                        .sort((a, b) => b.timestamp - a.timestamp)
+                        .map((conversation) => (
+                            <ConversationItem
+                                key={conversation.id}
+                                conversation={conversation}
+                                isSelected={selectedConversationId === conversation.id}
+                                selectedFocusId={selectedFocusId}
+                                onFocusSelect={onFocusSelect}
+                            />
                         ))}
-                    </div>
                 </div>
-            )}
+            </div>
 
             <div className="sidebar-footer">
                 <div className="info-box">
@@ -181,5 +181,89 @@ export default function Sidebar({
                 </div>
             </div>
         </aside>
+    );
+}
+
+interface ConversationItemProps {
+    conversation: VerifiedConversation;
+    isSelected: boolean;
+    selectedFocusId: string | null;
+    onFocusSelect: (conversationId: string, focusId: string) => void;
+}
+
+function ConversationItem({
+    conversation,
+    isSelected,
+    selectedFocusId,
+    onFocusSelect,
+}: ConversationItemProps) {
+    const [isExpanded, setIsExpanded] = useState(isSelected);
+
+    useEffect(() => {
+        if (isSelected) {
+            setIsExpanded(true);
+        }
+    }, [isSelected]);
+
+    const hasFocuses = conversation.focuses && conversation.focuses.length > 0;
+
+    return (
+        <div className="conversation-item-wrapper">
+            <button
+                className={`conversation-item ${isSelected && !selectedFocusId ? 'active' : ''}`}
+                onClick={() => {
+                    if (hasFocuses) {
+                        setIsExpanded(!isExpanded);
+                    }
+                    onFocusSelect(conversation.id, 'all');
+                }}
+            >
+                <div className="conversation-item-content">
+                    <div className="conversation-item-header">
+                        <span className="conversation-item-title">{conversation.title}</span>
+                        {hasFocuses && (
+                            <span className="expand-icon">{isExpanded ? '▼' : '▶'}</span>
+                        )}
+                    </div>
+                    <span className="conversation-item-badge">
+                        {new Date(conversation.timestamp).toLocaleDateString('ko-KR')} ·{' '}
+                        {conversation.messages.length}개 메시지
+                    </span>
+                </div>
+            </button>
+
+            {/* Focus 목록 */}
+            {isExpanded && hasFocuses && (
+                <div className="focus-list">
+                    {conversation.focuses!.map((focus) => (
+                        <button
+                            key={focus.id}
+                            className={`focus-item ${
+                                isSelected && selectedFocusId === focus.id ? 'active' : ''
+                            }`}
+                            onClick={() => onFocusSelect(conversation.id, focus.id)}
+                        >
+                            <div className="focus-item-content">
+                                <div className="focus-item-header">
+                                    <span className="focus-item-title">{focus.name}</span>
+                                    <span className="focus-item-count">
+                                        {focus.messageIds.length}개
+                                    </span>
+                                </div>
+                                {focus.questionTags.length > 0 && (
+                                    <div className="focus-item-tags">
+                                        {focus.questionTags.map((tag, idx) => (
+                                            <span key={idx} className="focus-tag">
+                                                "{tag}"
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </button>
+                    ))}
+                </div>
+            )}
+        </div>
     );
 }

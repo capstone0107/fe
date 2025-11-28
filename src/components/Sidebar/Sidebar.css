@@ -99,6 +99,12 @@
     gap: 0.25rem;
 }
 
+/* 대화 아이템 래퍼 */
+.conversation-item-wrapper {
+    display: flex;
+    flex-direction: column;
+}
+
 /* 대화 아이템 */
 .conversation-item {
     width: 100%;
@@ -146,6 +152,12 @@
     color: var(--accent);
 }
 
+.expand-icon {
+    font-size: 0.625rem;
+    color: #6b7280;
+    transition: transform 0.2s;
+}
+
 .conversation-item-badge {
     font-size: 0.625rem;
     font-weight: 500;
@@ -163,13 +175,79 @@
     color: var(--accent);
 }
 
-.conversation-item-tags {
+/* Focus 목록 */
+.focus-list {
+    display: flex;
+    flex-direction: column;
+    margin-left: 0.75rem;
+    padding-left: 0.5rem;
+    border-left: 2px solid #e5e7eb;
+}
+
+.focus-item {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    background: transparent;
+    border: none;
+    border-left: 3px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: left;
+}
+
+.focus-item:hover {
+    background: var(--bg-secondary);
+    border-left-color: var(--accent);
+}
+
+.focus-item.active {
+    background: #eff6ff;
+    border-left-color: var(--accent);
+}
+
+.focus-item-content {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.focus-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.focus-item-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #374151;
+    line-height: 1.2;
+    flex: 1;
+}
+
+.focus-item.active .focus-item-title {
+    color: var(--accent);
+}
+
+.focus-item-count {
+    font-size: 0.625rem;
+    color: #6b7280;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.focus-item.active .focus-item-count {
+    color: var(--accent);
+}
+
+.focus-item-tags {
     display: flex;
     flex-wrap: wrap;
     gap: 3px;
 }
 
-.conversation-tag {
+.focus-tag {
     display: inline-block;
     padding: 2px 6px;
     background: transparent;
@@ -181,7 +259,7 @@
     line-height: 1.3;
 }
 
-.conversation-item.active .conversation-tag {
+.focus-item.active .focus-tag {
     color: var(--accent);
     border-color: var(--accent);
 }

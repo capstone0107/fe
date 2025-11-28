@@ -5,6 +5,22 @@
     overflow: hidden;
 }
 
+/* 히스토리 보기 배너 */
+.history-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    background: #eff6ff;
+    border-bottom: 1px solid #bfdbfe;
+    color: #1e40af;
+    font-size: 0.875rem;
+}
+
+.history-banner svg {
+    flex-shrink: 0;
+}
+
 .messages {
     flex: 1;
     overflow-y: auto;

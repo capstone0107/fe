@@ -3,6 +3,7 @@ import type { ClassifyResponse, FocusData, Focus, SearchResponse } from '../type
 const API_BASE_URL = 'http://localhost:8000/api';
 
 export interface Message {
+    id: string;
     role: 'user' | 'assistant';
     content: string;
 }
@@ -22,7 +23,10 @@ export class FocusService {
             },
             body: JSON.stringify({
                 conversation_id: conversationId,
-                messages: messages,
+                messages: messages.map(m => ({
+                    role: m.role,
+                    content: m.content
+                })),
             }),
         });
 
