@@ -7,11 +7,12 @@ interface SidebarProps {
     onViewChange: (view: ViewType) => void;
     bookmarksCount: number;
     conversationsCount: number;
-    // Focus Navigation 관련 props
-    focusView?: ConversationViewType;
+    // 대화 내용 관련 props
     mainTopic?: string;
     focuses?: ConversationFocus[];
+    focusView?: ConversationViewType;
     onFocusViewChange?: (view: ConversationViewType) => void;
+    totalMessageCount?: number;
 }
 
 export default function Sidebar({
@@ -19,10 +20,11 @@ export default function Sidebar({
     onViewChange,
     bookmarksCount,
     conversationsCount,
-    focusView = 'all',
-    mainTopic = '대화 주제',
+    mainTopic,
     focuses = [],
+    focusView = 'all',
     onFocusViewChange,
+    totalMessageCount = 0,
 }: SidebarProps) {
     return (
         <aside className="sidebar">
@@ -121,53 +123,56 @@ export default function Sidebar({
                 </button>
             </nav>
 
-            {/* 대화 목록 - Chat 뷰일 때만 표시 */}
- 
-            <div className="conversation-list-section">
-                <div className="conversation-list-header">
-                    <span className="conversation-list-title">대화 목록</span>
-                </div>
+            {/* 대화 목록 섹션 - 항상 표시 */}
+            {mainTopic && onFocusViewChange && (
+                <div className="conversation-list-section">
+                    <div className="conversation-list-header">
+                        <span className="conversation-list-title">대화 내용</span>
+                    </div>
 
-                <div className="conversation-list">
-                    {/* 전체 대화 */}
-                    {mainTopic && onFocusViewChange && (
+                    <div className="conversation-list">
+                        {/* 전체 대화 */}
                         <button
                             className={`conversation-item ${focusView === 'all' ? 'active' : ''}`}
                             onClick={() => onFocusViewChange('all')}
                         >
                             <div className="conversation-item-content">
                                 <span className="conversation-item-title">{mainTopic}</span>
-                                <span className="conversation-item-badge">전체 대화</span>
+                                <span className="conversation-item-badge">
+                                    전체 대화 · {totalMessageCount}개 메시지
+                                </span>
                             </div>
                         </button>
-                    )}
 
-                    {/* Focus 목록 */}
-                    {focuses.map((focus) => (
-                        <button
-                            key={focus.id}
-                            className={`conversation-item ${focusView === focus.id ? 'active' : ''}`}
-                            onClick={() => onFocusViewChange?.(focus.id)}
-                        >
-                            <div className="conversation-item-content">
-                                <div className="conversation-item-header">
-                                    <span className="conversation-item-title">{focus.name}</span>
-                                    <span className="conversation-item-count">
-                                        {focus.questionTags.length}개 질문
-                                    </span>
-                                </div>
-                                <div className="conversation-item-tags">
-                                    {focus.questionTags.map((tag, idx) => (
-                                        <span key={idx} className="conversation-tag">
-                                            "{tag}"
+                        {/* Focus 목록 */}
+                        {focuses.map((focus) => (
+                            <button
+                                key={focus.id}
+                                className={`conversation-item ${
+                                    focusView === focus.id ? 'active' : ''
+                                }`}
+                                onClick={() => onFocusViewChange(focus.id)}
+                            >
+                                <div className="conversation-item-content">
+                                    <div className="conversation-item-header">
+                                        <span className="conversation-item-title">{focus.name}</span>
+                                        <span className="conversation-item-count">
+                                            {focus.messageIds.length}개
                                         </span>
-                                    ))}
+                                    </div>
+                                    <div className="conversation-item-tags">
+                                        {focus.questionTags.map((tag, idx) => (
+                                            <span key={idx} className="conversation-tag">
+                                                "{tag}"
+                                            </span>
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
-                        </button>
-                    ))}
+                            </button>
+                        ))}
+                    </div>
                 </div>
-            </div>
+            )}
 
             <div className="sidebar-footer">
                 <div className="info-box">

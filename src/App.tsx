@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import './App.css';
 import Sidebar from './components/Sidebar/Sidebar';
 import Header from './components/Header/Header';
@@ -15,71 +15,40 @@ import type {
     VerifiedConversation,
     ViewType,
     Quiz,
-    ConversationViewType,
-    ConversationFocus,
+
 } from './types';
+import type { ConversationFocus, ConversationViewType } from './types/conversation';
+
+// 샘플 Focus 데이터
+const SAMPLE_FOCUSES: ConversationFocus[] = [
+    {
+        id: 'focus-cpu-scheduling',
+        name: 'CPU 스케줄링 기술 최적화',
+        messageIds: [1, 2, 3, 4],
+        questionTags: ['FCFS 알고리즘', '병렬 처리 방법'],
+    },
+    {
+        id: 'focus-memory-management',
+        name: '메모리 관리',
+        messageIds: [5, 6, 9, 10],
+        questionTags: ['페이징 기법', '세그멘테이션'],
+    },
+    {
+        id: 'focus-performance-analysis',
+        name: '성능 분석',
+        messageIds: [7, 8],
+        questionTags: ['실시간 부하 측정'],
+    },
+];
+
+const MAIN_TOPIC = '운영체제 관련 질의';
 
 function App() {
+    // View States
+    const [currentView, setCurrentView] = useState<ViewType>('chat');
     const [focusView, setFocusView] = useState<ConversationViewType>('all');
 
-    // 샘플 Focus 데이터
-    const sampleFocuses: ConversationFocus[] = [
-        {
-            id: 'focus1',
-            name: 'CPU 스케줄링 기술 최적화',
-            messageIds: [1, 2, 3, 4],
-            questionTags: ['FCFS', '병렬 처리 방법'],
-        },
-        {
-            id: 'focus2',
-            name: '메모리 관리',
-            messageIds: [5, 6, 9, 10],
-            questionTags: ['페이징', '세그멘테이션'],
-        },
-        {
-            id: 'focus3',
-            name: '기타 성능 분석',
-            messageIds: [7, 8],
-            questionTags: ['실시간 부하 측정'],
-        },
-                {
-            id: 'focus1',
-            name: 'CPU 스케줄링 기술 최적화',
-            messageIds: [1, 2, 3, 4],
-            questionTags: ['FCFS', '병렬 처리 방법'],
-        },
-        {
-            id: 'focus2',
-            name: '메모리 관리',
-            messageIds: [5, 6, 9, 10],
-            questionTags: ['페이징', '세그멘테이션'],
-        },
-        {
-            id: 'focus3',
-            name: '기타 성능 분석',
-            messageIds: [7, 8],
-            questionTags: ['실시간 부하 측정'],
-        },
-                {
-            id: 'focus1',
-            name: 'CPU 스케줄링 기술 최적화',
-            messageIds: [1, 2, 3, 4],
-            questionTags: ['FCFS', '병렬 처리 방법'],
-        },
-        {
-            id: 'focus2',
-            name: '메모리 관리',
-            messageIds: [5, 6, 9, 10],
-            questionTags: ['페이징', '세그멘테이션'],
-        },
-        {
-            id: 'focus3',
-            name: '기타 성능 분석',
-            messageIds: [7, 8],
-            questionTags: ['실시간 부하 측정'],
-        },
-    ];
-
+    // Chat States
     const [messages, setMessages] = useState<Message[]>([
         {
             role: 'assistant',
@@ -89,12 +58,17 @@ function App() {
         },
     ]);
     const [loading, setLoading] = useState(false);
+
+    // Bookmark States
     const [bookmarks, setBookmarks] = useState<BookmarkedSource[]>([]);
+
+    // Verified Conversation States
     const [verifiedConversations, setVerifiedConversations] = useState<VerifiedConversation[]>([]);
-    const [quizzes, setQuizzes] = useState<Quiz[]>([]);
-    const [currentView, setCurrentView] = useState<ViewType>('chat');
     const [showSaveDialog, setShowSaveDialog] = useState(false);
     const [conversationTitle, setConversationTitle] = useState('');
+
+    // Quiz States
+    const [quizzes, setQuizzes] = useState<Quiz[]>([]);
 
     // Load saved data on mount
     useEffect(() => {
@@ -114,6 +88,17 @@ function App() {
         }
     }, []);
 
+    // Calculate total message count for conversation list
+    const totalMessageCount = useMemo(() => {
+        return messages.filter(
+            (m) =>
+                m.role !== 'assistant' ||
+                m.content !==
+                    '안녕하세요! 레빗홀과 함께 대화에서 시작되는 학습을 경험해보세요. 무엇이 궁금하신가요?',
+        ).length;
+    }, [messages]);
+
+    // Bookmark Management
     const findQuestionForSource = (source: Source): string => {
         for (let i = messages.length - 1; i >= 0; i--) {
             const msg = messages[i];
@@ -179,6 +164,7 @@ function App() {
         return grouped;
     };
 
+    // Chat Management
     const handleSendMessage = async (input: string) => {
         const userMessage: Message = { role: 'user', content: input };
         setMessages((prev) => [...prev, userMessage]);
@@ -203,7 +189,6 @@ function App() {
             }
 
             const data = await response.json();
-            console.log('Received data:', data);
 
             const assistantMessage: Message = {
                 role: 'assistant',
@@ -223,6 +208,7 @@ function App() {
         }
     };
 
+    // Verified Conversation Management
     const handleSaveConversation = () => {
         if (!conversationTitle.trim()) return;
 
@@ -287,6 +273,7 @@ function App() {
         URL.revokeObjectURL(url);
     };
 
+    // Quiz Management
     const handleAnswerQuiz = (quizId: string, answerIndex: number) => {
         const updatedQuizzes = quizzes.map((quiz) => {
             if (quiz.id === quizId) {
@@ -309,6 +296,7 @@ function App() {
         localStorage.setItem('quizzes', JSON.stringify(updatedQuizzes));
     };
 
+    // Prepare grouped bookmarks
     const groupedBookmarks = getGroupedBookmarks();
     const questionGroups = Object.keys(groupedBookmarks).sort((a, b) => {
         const latestA = Math.max(...groupedBookmarks[a].map((b) => b.timestamp));
@@ -318,16 +306,18 @@ function App() {
 
     return (
         <div className="app">
+            {/* Sidebar - 항상 표시되며 대화 목록 포함 */}
             <Sidebar
                 currentView={currentView}
                 onViewChange={setCurrentView}
                 bookmarksCount={bookmarks.length}
                 conversationsCount={verifiedConversations.length}
-                // Focus Navigation props
+                // 대화 목록 props
+                mainTopic={MAIN_TOPIC}
+                focuses={SAMPLE_FOCUSES}
                 focusView={focusView}
-                mainTopic="운영체제 관련 질의"
-                focuses={sampleFocuses}
                 onFocusViewChange={setFocusView}
+                totalMessageCount={totalMessageCount}
             />
 
             <main className="main">
