@@ -39,10 +39,10 @@ export default function Sidebar({
         <aside className="sidebar">
             <div className="sidebar-header">
                 <div className="logo-container">
-                    <div className="logo-icon">🐰</div>
+                    <img src="/logo.png" alt="레빗홀 로고" className="logo-icon" />
                     <h1 className="logo">레빗홀</h1>
                 </div>
-                <p className="subtitle">대화에서 시작되는 출처 기반 학습</p>
+                <p className="subtitle">대화에서 시작되는 출처 기반의 학습</p>
             </div>
 
             {/* 기본 네비게이션 */}
