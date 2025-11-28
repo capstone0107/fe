@@ -260,7 +260,7 @@ const SAMPLE_CONVERSATIONS: VerifiedConversation[] = [
 function App() {
     // View States
     const [currentView, setCurrentView] = useState<ViewType>('chat');
-
+    const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
     // Chat States
     const [messages, setMessages] = useState<Message[]>([
         {
@@ -402,7 +402,6 @@ function App() {
         return grouped;
     };
 
-    // Chat Management
     const handleSendMessage = async (input: string) => {
         // Focus 선택 중이면 현재 대화로 전환
         if (selectedConversation) {
@@ -429,6 +428,8 @@ function App() {
                 },
                 body: JSON.stringify({
                     question: conversationHistory,
+                    conversation_id: currentConversationId,  // ⭐ 있으면 전달, 없으면 null
+                    auto_save: true  // ⭐ 자동 저장 활성화
                 }),
             });
 
@@ -437,6 +438,20 @@ function App() {
             }
 
             const data = await response.json();
+
+            // ⭐ 백엔드에서 받은 conversation_id 저장
+            if (data.conversation_id && !currentConversationId) {
+                console.log('✅ 새 대화 ID:', data.conversation_id);
+                setCurrentConversationId(data.conversation_id);
+            }
+
+            // ⭐ 자동 저장 메타데이터 로깅
+            if (data.metadata?.auto_saved) {
+                console.log('💾 백그라운드 저장 시작:', {
+                    conversation_id: data.conversation_id,
+                    message_count: data.metadata.message_count
+                });
+            }
 
             const assistantMessage: Message = {
                 id: generateId(),
@@ -458,11 +473,12 @@ function App() {
         }
     };
 
-    // Verified Conversation Management
     const handleSaveConversation = async () => {
         if (!conversationTitle.trim()) return;
 
-        const conversationId = Date.now().toString();
+        // ⭐ 백엔드 ID가 있으면 재사용, 없으면 새로 생성
+        const conversationId = currentConversationId || Date.now().toString();
+        
         const conversationMessages = messages.filter(
             (m) =>
                 m.role !== 'assistant' ||
@@ -471,7 +487,55 @@ function App() {
         );
 
         try {
-            // Focus 분류 API 호출
+            // ⭐ currentConversationId가 있으면 이미 백그라운드에서 저장됨
+            if (currentConversationId) {
+                console.log('✅ 백엔드에 이미 저장된 대화:', currentConversationId);
+                
+                // 저장 상태 확인 (선택사항)
+                const statusResponse = await fetch(
+                    `http://127.0.0.1:8000/api/conversation/${currentConversationId}/status`
+                );
+                const status = await statusResponse.json();
+                
+                if (status.saved) {
+                    console.log('💾 백그라운드 저장 완료:', {
+                        title: status.title,
+                        focus_count: status.focus_count
+                    });
+                    
+                    // 백엔드에서 대화 가져오기 (Focus 포함)
+                    const convResponse = await fetch(
+                        `http://127.0.0.1:8000/api/conversation/${currentConversationId}`
+                    );
+                    const convData = await convResponse.json();
+                    
+                    // 백엔드 데이터로 localStorage 업데이트
+                    const newConversation: VerifiedConversation = {
+                        id: conversationId,
+                        title: conversationTitle,  // 사용자가 입력한 제목 사용
+                        messages: conversationMessages,
+                        timestamp: Date.now(),
+                        focuses: convData.conversation.focuses || []
+                    };
+                    
+                    const updatedConversations = [...verifiedConversations, newConversation];
+                    setVerifiedConversations(updatedConversations);
+                    localStorage.setItem('verifiedConversations', JSON.stringify(updatedConversations));
+                    
+                    // 현재 대화 초기화
+                    setCurrentConversationId(null);
+                    setShowSaveDialog(false);
+                    setConversationTitle('');
+                    setCurrentView('verified');
+                    
+                    return;
+                } else {
+                    console.log('⏳ 백그라운드 저장 처리 중...');
+                }
+            }
+            
+            // ⭐ currentConversationId가 없거나 아직 저장 안 된 경우
+            // Focus 분류 API 호출 (기존 로직)
             const classifyResult = await FocusService.classifyConversation(
                 conversationId,
                 conversationMessages,
@@ -479,7 +543,6 @@ function App() {
 
             console.log('Focus 분류 완료:', classifyResult);
 
-            // 대화 저장 (Focus 정보 포함)
             const newConversation: VerifiedConversation = {
                 id: conversationId,
                 title: conversationTitle,
@@ -492,12 +555,16 @@ function App() {
             setVerifiedConversations(updatedConversations);
             localStorage.setItem('verifiedConversations', JSON.stringify(updatedConversations));
 
+            // 현재 대화 초기화
+            setCurrentConversationId(null);
             setShowSaveDialog(false);
             setConversationTitle('');
             setCurrentView('verified');
+            
         } catch (error) {
-            console.error('Focus 분류 실패:', error);
-            // 분류 실패해도 저장은 진행 (focuses 없이)
+            console.error('저장 실패:', error);
+            
+            // 실패해도 localStorage에는 저장
             const newConversation: VerifiedConversation = {
                 id: conversationId,
                 title: conversationTitle,
@@ -510,6 +577,7 @@ function App() {
             setVerifiedConversations(updatedConversations);
             localStorage.setItem('verifiedConversations', JSON.stringify(updatedConversations));
 
+            setCurrentConversationId(null);
             setShowSaveDialog(false);
             setConversationTitle('');
             setCurrentView('verified');
