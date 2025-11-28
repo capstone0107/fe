@@ -1,6 +1,6 @@
 import type { ClassifyResponse, FocusData, Focus, SearchResponse } from '../types/focus';
 
-const API_BASE_URL = 'http://localhost:8000/api';
+const API_BASE_URL = 'http://127.0.0.1:8000/api';
 
 export interface Message {
     id: string;
@@ -16,6 +16,8 @@ export class FocusService {
         conversationId: string,
         messages: Message[]
     ): Promise<ClassifyResponse> {
+        console.log("Classifying conversation with ID:", conversationId);
+        console.log("Messages:", messages);
         const response = await fetch(`${API_BASE_URL}/focus/classify`, {
             method: 'POST',
             headers: {

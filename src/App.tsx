@@ -16,7 +16,6 @@ import type {
     VerifiedConversation,
     ViewType,
     Quiz,
-    ConversationFocus,
 } from './types';
 
 // UUID 생성 함수
@@ -423,7 +422,7 @@ function App() {
             const conversationHistory = messages.map((m) => m.content);
             conversationHistory.push(input);
 
-            const response = await fetch('http://localhost:8000/api/search', {
+            const response = await fetch('http://127.0.0.1:8000/api/search', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
