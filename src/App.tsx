@@ -15,9 +15,71 @@ import type {
     VerifiedConversation,
     ViewType,
     Quiz,
+    ConversationViewType,
+    ConversationFocus,
 } from './types';
 
 function App() {
+    const [focusView, setFocusView] = useState<ConversationViewType>('all');
+
+    // 샘플 Focus 데이터
+    const sampleFocuses: ConversationFocus[] = [
+        {
+            id: 'focus1',
+            name: 'CPU 스케줄링 기술 최적화',
+            messageIds: [1, 2, 3, 4],
+            questionTags: ['FCFS', '병렬 처리 방법'],
+        },
+        {
+            id: 'focus2',
+            name: '메모리 관리',
+            messageIds: [5, 6, 9, 10],
+            questionTags: ['페이징', '세그멘테이션'],
+        },
+        {
+            id: 'focus3',
+            name: '기타 성능 분석',
+            messageIds: [7, 8],
+            questionTags: ['실시간 부하 측정'],
+        },
+                {
+            id: 'focus1',
+            name: 'CPU 스케줄링 기술 최적화',
+            messageIds: [1, 2, 3, 4],
+            questionTags: ['FCFS', '병렬 처리 방법'],
+        },
+        {
+            id: 'focus2',
+            name: '메모리 관리',
+            messageIds: [5, 6, 9, 10],
+            questionTags: ['페이징', '세그멘테이션'],
+        },
+        {
+            id: 'focus3',
+            name: '기타 성능 분석',
+            messageIds: [7, 8],
+            questionTags: ['실시간 부하 측정'],
+        },
+                {
+            id: 'focus1',
+            name: 'CPU 스케줄링 기술 최적화',
+            messageIds: [1, 2, 3, 4],
+            questionTags: ['FCFS', '병렬 처리 방법'],
+        },
+        {
+            id: 'focus2',
+            name: '메모리 관리',
+            messageIds: [5, 6, 9, 10],
+            questionTags: ['페이징', '세그멘테이션'],
+        },
+        {
+            id: 'focus3',
+            name: '기타 성능 분석',
+            messageIds: [7, 8],
+            questionTags: ['실시간 부하 측정'],
+        },
+    ];
+
     const [messages, setMessages] = useState<Message[]>([
         {
             role: 'assistant',
@@ -261,6 +323,11 @@ function App() {
                 onViewChange={setCurrentView}
                 bookmarksCount={bookmarks.length}
                 conversationsCount={verifiedConversations.length}
+                // Focus Navigation props
+                focusView={focusView}
+                mainTopic="운영체제 관련 질의"
+                focuses={sampleFocuses}
+                onFocusViewChange={setFocusView}
             />
 
             <main className="main">

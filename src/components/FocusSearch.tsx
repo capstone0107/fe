@@ -1,7 +1,7 @@
 import { useState } from 'react';
+import './FocusSearch.css';
 import type { SearchMatch } from '../types/focus';
 import { FocusService } from '../services/focusService';
-import './FocusSearch.css';
 
 export function FocusSearch() {
     const [keyword, setKeyword] = useState('');
