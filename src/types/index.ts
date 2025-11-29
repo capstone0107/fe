@@ -1,4 +1,5 @@
 export interface Message {
+    id: string;  // 추가: 메시지 고유 ID
     role: 'user' | 'assistant';
     content: string;
     sources?: Source[];
@@ -33,6 +34,21 @@ export interface GraphData {
     }[];
 }
 
+export interface ConversationFocus {
+    id: string;
+    name: string;
+    messageIds: string[];  // 메시지 고유 ID 배열
+    questionTags: string[];
+}
+
+export interface Conversation {
+    id: string;
+    title?: string;  // optional로 변경
+    isSaved: boolean;  // ✅ 추가: 저장 여부
+    messageCount: number;
+    timestamp: number;
+}
+
 export interface VerifiedConversation {
     id: string;
     title: string;
@@ -42,6 +58,8 @@ export interface VerifiedConversation {
     messages?: Message[];         
     sourceIds?: string[];         
     graphData?: GraphData;        
+    focuses?: ConversationFocus[];
+    isSaved?: boolean;  // ✅ 추가: 저장 여부 플래그
 }
 
 export interface Quiz {
@@ -60,20 +78,12 @@ export interface Quiz {
 
 export type ViewType = 'chat' | 'bookmarks' | 'verified' | 'quiz';
 
-// Focus Navigation 관련 타입 추가
 export interface ConversationMessage {
     id: number;
     role: 'user' | 'assistant';
     content: string;
     focusId: string;
     order: number;
-}
-
-export interface ConversationFocus {
-    id: string;
-    name: string;
-    messageIds: number[];
-    questionTags: string[];
 }
 
 export interface ConversationData {

@@ -9,6 +9,7 @@ interface ChatViewProps {
     onSendMessage: (message: string) => void;
     isBookmarked: (source: Source) => boolean;
     onToggleBookmark: (source: Source) => void;
+    isViewingHistory?: boolean;  // 히스토리 보기 모드
 }
 
 export default function ChatView({
@@ -17,6 +18,7 @@ export default function ChatView({
     onSendMessage,
     isBookmarked,
     onToggleBookmark,
+    isViewingHistory = false,
 }: ChatViewProps) {
     const [input, setInput] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -52,10 +54,24 @@ export default function ChatView({
 
     return (
         <div className="chat-container">
+            {isViewingHistory && (
+                <div className="history-banner">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                    </svg>
+                    <span>저장된 대화를 보고 있습니다. 새 메시지를 입력하면 현재 대화로 돌아갑니다.</span>
+                </div>
+            )}
+
             <div className="messages">
-                {messages.map((msg, idx) => (
+                {messages.map((msg) => (
                     <MessageGroup
-                        key={idx}
+                        key={msg.id}
                         message={msg}
                         isBookmarked={isBookmarked}
                         onToggleBookmark={onToggleBookmark}

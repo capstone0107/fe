@@ -1,4 +1,3 @@
-// Focus 관련 타입 정의
 export interface FocusAssignment {
     focus_id: string;
     confidence: number;
@@ -10,6 +9,12 @@ export interface ClassifyResponse {
     conversation_summary: string;
     focus_assignments: FocusAssignment[];
     classified_at: string;
+    focuses: {  // 추가: 분류된 Focus 상세 정보
+        id: string;
+        name: string;
+        messageIds: string[];
+        questionTags: string[];
+    }[];
 }
 
 export interface SubFocus {
