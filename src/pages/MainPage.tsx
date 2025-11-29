@@ -318,7 +318,7 @@ function MainPage() {
         
         try {
             // ⭐ apiClient로 변경
-            const response = await apiClient.post<{ conversation_id: string }>('/api/search/start', {
+            const response = await apiClient.post<{ conversation_id: string }>('/search/start', {
                 conversation_id: newId 
             });
             
@@ -464,7 +464,7 @@ function MainPage() {
 
         try {
             // ⭐ apiClient로 변경
-            const response = await apiClient.post<{ message_id: string; answer: string; sources: Source[] }>('/api/search/query', {
+            const response = await apiClient.post<{ message_id: string; answer: string; sources: Source[] }>('/search/query', {
                 conversation_id: currentConversationId,
                 question: input
             });
@@ -506,7 +506,7 @@ function MainPage() {
         try {
             // ⭐ apiClient로 변경
             // focuses 타입 추론을 위해 any 또는 구체적 타입 사용 가능
-            const response = await apiClient.post<{ focuses: any[] }>('/api/search/finalize', {
+            const response = await apiClient.post<{ focuses: any[] }>('/search/finalize', {
                 conversation_id: currentConversationId,
                 user_title: conversationTitle
             });
