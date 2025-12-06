@@ -8,7 +8,7 @@ import VerifiedView from '../components/VerifiedView/VerifiedView';
 import QuizView from '../components/QuizView/QuizView';
 import SaveDialog from '../components/SaveDialog/SaveDialog';
 import ConversationGraph from '../conversationGraph';
-// apiClient import 추가 (경로는 프로젝트 구조에 맞게 조정해주세요)
+import { bookmarkAPI } from '../api/bookmark'; // ⭐ 이 줄 추가
 import type {
     Message,
     Source,
@@ -272,6 +272,7 @@ const SAMPLE_CONVERSATIONS: VerifiedConversation[] = [
     },
 ];
 
+
 function MainPage() {
     // View States
     const [currentView, setCurrentView] = useState<ViewType>('chat');
@@ -294,6 +295,7 @@ function MainPage() {
 
     // Bookmark States
     const [bookmarks, setBookmarks] = useState<BookmarkedSource[]>([]);
+    const [bookmarksLoading, setBookmarksLoading] = useState(false); // ⭐ 이 줄 추가
 
     // Verified Conversation States
     const [verifiedConversations, setVerifiedConversations] = useState<VerifiedConversation[]>([]);
@@ -310,8 +312,32 @@ function MainPage() {
 
     useEffect(() => {
         startNewConversation();
+        loadBookmarks();
     }, []);
 
+    const loadBookmarks = async () => {
+        setBookmarksLoading(true);
+        try {
+            const response = await bookmarkAPI.list(1, 100);
+            
+            const loadedBookmarks: BookmarkedSource[] = response.bookmarks.map((bm) => ({
+                id: bm.id,
+                title: bm.title,
+                url: bm.source_url,
+                snippet: bm.summary,
+                timestamp: new Date(bm.created_at).getTime(),
+                question: '기타',
+                knowledge_id: bm.knowledge_id,
+            }));
+            
+            setBookmarks(loadedBookmarks);
+            console.log('✅ 북마크 로드 완료:', loadedBookmarks.length, '개');
+        } catch (error) {
+            console.error('북마크 로드 실패:', error);
+        } finally {
+            setBookmarksLoading(false);
+        }
+    };
 
     const startNewConversation = async () => {
         const newId = `auto-${Date.now()}`;
@@ -329,6 +355,59 @@ function MainPage() {
             console.error('대화 시작 실패:', error);
             // fallback: 로컬에서 ID 생성
             setCurrentConversationId(newId);
+        }
+    };
+
+    const toggleBookmark = async (source: Source) => {
+        const existingBookmark = bookmarks.find(
+            (b) => b.title === source.title && b.url === source.url
+        );
+
+        if (existingBookmark && existingBookmark.id) {
+            // 북마크 삭제
+            try {
+                await bookmarkAPI.delete(existingBookmark.id);
+                setBookmarks(bookmarks.filter((b) => b.id !== existingBookmark.id));
+                console.log('✅ 북마크 삭제 완료');
+            } catch (error) {
+                console.error('북마크 삭제 실패:', error);
+                alert('북마크 삭제에 실패했습니다.');
+            }
+        } else {
+            // 북마크 생성
+            const question = findQuestionForSource(source);
+            
+            const messageId = displayedMessages.find((msg) =>
+                msg.sources?.some((s) => s.title === source.title && s.url === source.url)
+            )?.id || 'unknown';
+            
+            const knowledge_id = `${currentConversationId}-${messageId}`;
+
+            try {
+                const newBookmark = await bookmarkAPI.create({
+                    knowledge_id,
+                    source_url: source.url,
+                    title: source.title,
+                    summary: source.snippet || '',
+                    model_version: 'gpt-4o-mini',
+                });
+
+                const bookmarkedSource: BookmarkedSource = {
+                    id: newBookmark.id,
+                    title: newBookmark.title,
+                    url: newBookmark.source_url,
+                    snippet: newBookmark.summary,
+                    timestamp: new Date(newBookmark.created_at).getTime(),
+                    question,
+                    knowledge_id: newBookmark.knowledge_id,
+                };
+
+                setBookmarks([...bookmarks, bookmarkedSource]);
+                console.log('✅ 북마크 생성 완료');
+            } catch (error) {
+                console.error('북마크 생성 실패:', error);
+                alert('북마크 저장에 실패했습니다.');
+            }
         }
     };
 
@@ -400,29 +479,6 @@ function MainPage() {
             }
         }
         return '기타';
-    };
-
-    const toggleBookmark = (source: Source) => {
-        const sourceId = `${source.title}-${source.url}`;
-        const isBookmarked = bookmarks.some((b) => `${b.title}-${b.url}` === sourceId);
-
-        let newBookmarks;
-        if (isBookmarked) {
-            newBookmarks = bookmarks.filter((b) => `${b.title}-${b.url}` !== sourceId);
-        } else {
-            const question = findQuestionForSource(source);
-            newBookmarks = [
-                ...bookmarks,
-                {
-                    ...source,
-                    timestamp: Date.now(),
-                    question: question,
-                },
-            ];
-        }
-
-        setBookmarks(newBookmarks);
-        localStorage.setItem('bookmarks', JSON.stringify(newBookmarks));
     };
 
     const isSourceBookmarked = (source: Source) => {
@@ -628,7 +684,7 @@ function MainPage() {
         setGraphData(null);
 
         try {
-            const response = await fetch('http://localhost:8000/api/graph', {
+            const response = await fetch('http://127.0.0.1:8000/graph', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ messages: conversation.messages }),
@@ -661,7 +717,7 @@ function MainPage() {
         if (conv.type === 'combined' || !conv.messages) return null;
 
         try {
-            const response = await fetch('http://localhost:8000/api/graph', {
+            const response = await fetch('http://127.0.0.1:8000/graph', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ messages: conv.messages })
@@ -695,7 +751,7 @@ function MainPage() {
             }
 
             // 2. Call Combined API
-            const response = await fetch('http://localhost:8000/api/graph/combined', {
+            const response = await fetch('http://127.0.0.1:8000/graph/combined', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ graphs: graphs }),
@@ -778,7 +834,7 @@ function MainPage() {
                 onViewChange={setCurrentView}
                 bookmarksCount={bookmarks.length}
                 conversationsCount={verifiedConversations.length}
-                // 현재 대화 정보
+                hasConversationId={currentConversationId !== null}
                 hasCurrentConversation={currentMessageCount > 0}
                 currentMessageCount={currentMessageCount}
                 isCurrentConversationSelected={!selectedConversation}

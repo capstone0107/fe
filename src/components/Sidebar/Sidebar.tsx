@@ -13,6 +13,7 @@ interface SidebarProps {
     currentMessageCount: number;
     isCurrentConversationSelected: boolean;
     onCurrentConversationSelect: () => void;
+    hasConversationId: boolean; // ⭐ 추가: conversation ID 존재 여부
 
     // 저장된 대화 목록
     savedConversations: VerifiedConversation[];
@@ -31,6 +32,7 @@ export default function Sidebar({
     currentMessageCount,
     isCurrentConversationSelected,
     onCurrentConversationSelect,
+    hasConversationId, // ⭐ 추가
     savedConversations,
     selectedConversationId,
     selectedFocusId,
@@ -46,17 +48,21 @@ export default function Sidebar({
                 </div>
                 <p className="subtitle">대화에서 시작되는 출처 기반 학습</p>
             </div>
-            
-            {/* ⭐ [수정됨] 요구사항 3: '새 대화' 버튼(.new-chat-btn) 삭제 */}
 
             {/* 기본 네비게이션 */}
             <nav className="nav">
-                {/* ⭐ [수정됨] 요구사항 3: 챗봇 버튼 클릭 시 새 대화 생성 + 뷰 전환 */}
+                {/* ⭐ [개선됨] conversation ID가 있으면 새로 생성하지 않음 */}
                 <button
                     className={`nav-button ${currentView === 'chat' ? 'active' : ''}`}
                     onClick={() => {
-                        onNewConversation(); // 새 대화 생성
-                        onViewChange('chat'); // 챗봇 뷰로 이동
+                        if (hasConversationId) {
+                            // conversation ID가 이미 있으면 뷰만 전환
+                            onViewChange('chat');
+                        } else {
+                            // conversation ID가 없으면 새 대화 생성
+                            onNewConversation();
+                            onViewChange('chat');
+                        }
                     }}
                 >
                     <svg
