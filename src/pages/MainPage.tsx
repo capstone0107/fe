@@ -594,8 +594,7 @@ function MainPage() {
             setCurrentView('verified');
             
             // 새 대화 시작
-            startNewConversation();
-            
+            await startNewConversation();            
         } catch (error) {
             console.error('저장 실패:', error);
             alert('대화 저장에 실패했습니다. 다시 시도해주세요.');

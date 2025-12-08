@@ -12,8 +12,10 @@ export interface Source {
 }
 
 export interface BookmarkedSource extends Source {
+    id?: number; // 백엔드 북마크 ID (서버에서 관리)
     timestamp: number;
     question: string;
+    knowledge_id?: string; // 지식 카드 ID (conversation_id + message_id)
 }
 
 export interface GroupedBookmarks {
