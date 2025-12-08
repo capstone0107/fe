@@ -356,54 +356,50 @@ function MainPage() {
     };
 
     const toggleBookmark = async (source: Source) => {
-        const existingBookmark = bookmarks.find(
-            (b) => b.title === source.title && b.url === source.url
-        );
+        const sourceId = `${source.title}-${source.url}`;
+        const isBookmarked = bookmarks.some((b) => `${b.title}-${b.url}` === sourceId);
 
-        if (existingBookmark && existingBookmark.id) {
-            // 북마크 삭제
-            try {
-                await bookmarkAPI.delete(existingBookmark.id);
-                setBookmarks(bookmarks.filter((b) => b.id !== existingBookmark.id));
-                console.log('✅ 북마크 삭제 완료');
-            } catch (error) {
-                console.error('북마크 삭제 실패:', error);
-                alert('북마크 삭제에 실패했습니다.');
-            }
-        } else {
-            // 북마크 생성
-            const question = findQuestionForSource(source);
-            
-            const messageId = displayedMessages.find((msg) =>
-                msg.sources?.some((s) => s.title === source.title && s.url === source.url)
-            )?.id || 'unknown';
-            
-            const knowledge_id = `${currentConversationId}-${messageId}`;
-
-            try {
-                const newBookmark = await bookmarkAPI.create({
-                    knowledge_id,
-                    source_url: source.url,
+        try {
+            if (isBookmarked) {
+                // 북마크 제거
+                await apiClient.delete('/bookmarks', {
+                    data: {
+                        title: source.title,
+                        url: source.url
+                    }
+                });
+                
+                const newBookmarks = bookmarks.filter((b) => `${b.title}-${b.url}` !== sourceId);
+                setBookmarks(newBookmarks);
+                localStorage.setItem('bookmarks', JSON.stringify(newBookmarks));
+            } else {
+                // 북마크 추가 - 사용자 질문도 함께 전송
+                const question = findQuestionForSource(source);
+                console.log('관련 질문 찾음:', question);
+                await apiClient.post('/bookmarks', {
                     title: source.title,
+                    source_url: source.url,
                     summary: source.snippet || '',
-                    model_version: 'gpt-4o-mini',
+                    question: question, // ✅ 사용자 질문 추가
+                    knowledge_id: currentConversationId,
+                    model_version: 'v1.0' // 예시 모델 버전
                 });
 
-                const bookmarkedSource: BookmarkedSource = {
-                    title: newBookmark.title,
-                    url: newBookmark.source_url,
-                    snippet: newBookmark.summary,
-                    timestamp: new Date(newBookmark.created_at).getTime(),
-                    question,
-                    knowledge_id: newBookmark.knowledge_id,
-                };
-
-                setBookmarks([...bookmarks, bookmarkedSource]);
-                console.log('✅ 북마크 생성 완료');
-            } catch (error) {
-                console.error('북마크 생성 실패:', error);
-                alert('북마크 저장에 실패했습니다.');
+                const newBookmarks = [
+                    ...bookmarks,
+                    {
+                        ...source,
+                        timestamp: Date.now(),
+                        question: question,
+                    },
+                ];
+                
+                setBookmarks(newBookmarks);
+                localStorage.setItem('bookmarks', JSON.stringify(newBookmarks));
             }
+        } catch (error) {
+            console.error('북마크 처리 실패:', error);
+            alert('북마크 처리에 실패했습니다.');
         }
     };
 
