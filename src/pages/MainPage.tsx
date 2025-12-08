@@ -295,7 +295,6 @@ function MainPage() {
 
     // Bookmark States
     const [bookmarks, setBookmarks] = useState<BookmarkedSource[]>([]);
-    const [bookmarksLoading, setBookmarksLoading] = useState(false); // ⭐ 이 줄 추가
 
     // Verified Conversation States
     const [verifiedConversations, setVerifiedConversations] = useState<VerifiedConversation[]>([]);
@@ -316,12 +315,10 @@ function MainPage() {
     }, []);
 
     const loadBookmarks = async () => {
-        setBookmarksLoading(true);
         try {
             const response = await bookmarkAPI.list(1, 100);
             
             const loadedBookmarks: BookmarkedSource[] = response.bookmarks.map((bm) => ({
-                id: bm.id,
                 title: bm.title,
                 url: bm.source_url,
                 snippet: bm.summary,
@@ -335,7 +332,7 @@ function MainPage() {
         } catch (error) {
             console.error('북마크 로드 실패:', error);
         } finally {
-            setBookmarksLoading(false);
+
         }
     };
 
@@ -393,7 +390,6 @@ function MainPage() {
                 });
 
                 const bookmarkedSource: BookmarkedSource = {
-                    id: newBookmark.id,
                     title: newBookmark.title,
                     url: newBookmark.source_url,
                     snippet: newBookmark.summary,
