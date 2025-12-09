@@ -3,8 +3,8 @@ import apiClient from './client';
 const API_PREFIX = '/quiz';
 
 export const quizAPI = {
-    getQuizById: async (quizId: string) => {
-        const response = await apiClient.get(`${API_PREFIX}/${quizId}`);
+    getAllQuizzes: async () => {
+        const response = await apiClient.get(`${API_PREFIX}`);
         return response.data;
     },
 

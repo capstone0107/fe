@@ -1,112 +1,51 @@
 import { useState, useEffect } from 'react';
 import './QuizView.css';
 import type { Quiz } from '../../types';
+import { quizAPI } from '../../api/quiz';
 
-interface QuizViewProps {
-    quizzes: Quiz[];
-    onAnswerQuiz: (quizId: string, answerIndex: number) => void;
-    onDeleteQuiz: (quizId: string) => void;
-}
-
-const MOCK_QUIZZES = [
-    {
-        question: '인공지능의 학습 방식 중 레이블이 있는 데이터로 학습하는 방법은?',
-        options: ['지도 학습', '비지도 학습', '강화 학습', '전이 학습'],
-        correctAnswer: 0,
-        explanation:
-            '지도 학습(Supervised Learning)은 레이블이 있는 학습 데이터를 사용하여 입력과 출력 간의 관계를 학습하는 방법입니다. 정답이 주어진 데이터로 학습하기 때문에 분류나 회귀 문제에 주로 사용됩니다.',
-        sourceUrl: 'https://ko.wikipedia.org/wiki/지도_학습',
-        sourceTitle: '위키백과 - 지도 학습',
-        relatedQuestion: '인공지능의 학습 방식에는 어떤 것들이 있나요?',
-    },
-    {
-        question: 'React에서 상태 관리를 위해 사용하는 Hook은?',
-        options: ['useEffect', 'useState', 'useContext', 'useMemo'],
-        correctAnswer: 1,
-        explanation:
-            'useState는 함수형 컴포넌트에서 상태를 관리하기 위한 React Hook입니다. useState를 호출하면 현재 상태 값과 그 값을 업데이트하는 함수를 반환합니다.',
-        sourceUrl: 'https://react.dev/reference/react/useState',
-        sourceTitle: 'React 공식 문서 - useState',
-        relatedQuestion: 'React Hook에 대해 알려주세요',
-    },
-    {
-        question: '블록체인의 핵심 특징이 아닌 것은?',
-        options: ['탈중앙화', '투명성', '변경 가능성', '보안성'],
-        correctAnswer: 2,
-        explanation:
-            '블록체인의 핵심 특징은 탈중앙화, 투명성, 불변성(변경 불가능성), 보안성입니다. 한 번 기록된 데이터는 변경할 수 없는 것이 블록체인의 중요한 특징입니다.',
-        sourceUrl: 'https://ko.wikipedia.org/wiki/블록체인',
-        sourceTitle: '위키백과 - 블록체인',
-        relatedQuestion: '블록체인 기술에 대해 설명해주세요',
-    },
-    {
-        question: 'HTTP 메서드 중 서버의 리소스를 생성할 때 주로 사용하는 것은?',
-        options: ['GET', 'POST', 'PUT', 'DELETE'],
-        correctAnswer: 1,
-        explanation:
-            'POST 메서드는 서버에 새로운 리소스를 생성할 때 주로 사용됩니다. GET은 조회, PUT은 수정, DELETE는 삭제에 사용됩니다.',
-        sourceUrl: 'https://developer.mozilla.org/ko/docs/Web/HTTP/Methods',
-        sourceTitle: 'MDN - HTTP 요청 메서드',
-        relatedQuestion: 'RESTful API에서 HTTP 메서드는 어떻게 사용하나요?',
-    },
-    {
-        question: 'Python에서 리스트의 마지막 요소를 제거하고 반환하는 메서드는?',
-        options: ['remove()', 'pop()', 'delete()', 'clear()'],
-        correctAnswer: 1,
-        explanation:
-            'pop() 메서드는 리스트의 마지막 요소를 제거하고 그 값을 반환합니다. 인자를 전달하면 해당 인덱스의 요소를 제거할 수도 있습니다.',
-        sourceUrl: 'https://docs.python.org/ko/3/tutorial/datastructures.html',
-        sourceTitle: 'Python 공식 문서 - 자료 구조',
-        relatedQuestion: 'Python 리스트의 주요 메서드에는 무엇이 있나요?',
-    },
-    {
-        question: '데이터베이스의 ACID 속성 중 원자성(Atomicity)의 의미는?',
-        options: [
-            '트랜잭션의 모든 연산이 완전히 수행되거나 전혀 수행되지 않아야 함',
-            '트랜잭션이 성공적으로 완료되면 그 결과가 영구적으로 반영됨',
-            '동시에 실행되는 트랜잭션들이 서로 영향을 미치지 않음',
-            '트랜잭션 실행 전후에 데이터베이스가 일관된 상태를 유지함',
-        ],
-        correctAnswer: 0,
-        explanation:
-            '원자성(Atomicity)은 트랜잭션의 모든 연산이 완전히 수행되거나, 아니면 전혀 수행되지 않아야 한다는 의미입니다. All or Nothing 원칙이라고도 합니다.',
-        sourceUrl: 'https://ko.wikipedia.org/wiki/ACID',
-        sourceTitle: '위키백과 - ACID',
-        relatedQuestion: '데이터베이스의 트랜잭션 특성에 대해 알려주세요',
-    },
-];
-
-export default function QuizView({ quizzes, onAnswerQuiz, onDeleteQuiz }: QuizViewProps) {
+export default function QuizView() {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
     const [showResult, setShowResult] = useState(false);
     const [displayQuizzes, setDisplayQuizzes] = useState<Quiz[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
+    // API에서 퀴즈 목록 가져오기
     useEffect(() => {
-        if (quizzes.length === 0) {
-            const mockQuizzes: Quiz[] = MOCK_QUIZZES.map((quiz, idx) => ({
-                ...quiz,
-                id: `mock-${idx}`,
-                timestamp: Date.now() + idx,
-                userAnswer: undefined,
-                isCorrect: undefined,
-            }));
-            setDisplayQuizzes(mockQuizzes);
-        } else {
-            setDisplayQuizzes(quizzes);
-        }
-    }, [quizzes]);
+        const fetchQuizzes = async () => {
+            try {
+                setLoading(true);
+                setError(null);
+                const response = await quizAPI.getAllQuizzes();
+                const fetchedQuizzes: Quiz[] = response.quizzes.map((quiz: any) => ({
+                    id: String(quiz.id),
+                    question: quiz.question,
+                    options: quiz.options,
+                    correctAnswer: quiz.correct_answer,
+                    explanation: quiz.explanation || '',
+                    relatedQuestion: quiz.related_question,
+                    sourceUrl: quiz.source_url,
+                    sourceTitle: quiz.source_title,
+                    userAnswer: undefined,
+                    isCorrect: undefined,
+                }));
+                setDisplayQuizzes(fetchedQuizzes);
+            } catch (err) {
+                console.error('퀴즈 로딩 실패:', err);
+                setError('퀴즈를 불러오는데 실패했습니다.');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchQuizzes();
+    }, []);
 
     const currentQuiz = displayQuizzes[currentIndex];
     const completedQuizzes = displayQuizzes.filter((q) => q.userAnswer !== undefined);
     const correctCount = completedQuizzes.filter((q) => q.isCorrect).length;
     const isLastQuiz = currentIndex === displayQuizzes.length - 1;
-
-    useEffect(() => {
-        if (displayQuizzes.length > 0 && currentIndex > displayQuizzes.length) {
-            setCurrentIndex(displayQuizzes.length - 1);
-        }
-    }, [displayQuizzes.length, currentIndex]);
 
     const handleSelectAnswer = (answerIndex: number) => {
         if (!showResult) {
@@ -116,29 +55,22 @@ export default function QuizView({ quizzes, onAnswerQuiz, onDeleteQuiz }: QuizVi
 
     const handleSubmitAnswer = () => {
         if (selectedAnswer !== null && currentQuiz) {
-            // MOCK 퀴즈인 경우 로컬 상태만 업데이트
-            if (currentQuiz.id.startsWith('mock-')) {
-                const updatedQuizzes = displayQuizzes.map((quiz) => {
-                    if (quiz.id === currentQuiz.id) {
-                        return {
-                            ...quiz,
-                            userAnswer: selectedAnswer,
-                            isCorrect: selectedAnswer === quiz.correctAnswer,
-                        };
-                    }
-                    return quiz;
-                });
-                setDisplayQuizzes(updatedQuizzes);
-            } else {
-                // 실제 퀴즈는 부모 컴포넌트로 전달
-                onAnswerQuiz(currentQuiz.id, selectedAnswer);
-            }
+            const updatedQuizzes = displayQuizzes.map((quiz) => {
+                if (quiz.id === currentQuiz.id) {
+                    return {
+                        ...quiz,
+                        userAnswer: selectedAnswer,
+                        isCorrect: selectedAnswer === quiz.correctAnswer,
+                    };
+                }
+                return quiz;
+            });
+            setDisplayQuizzes(updatedQuizzes);
             setShowResult(true);
         }
     };
 
     const handleNextQuiz = () => {
-        // 마지막 문제이고 결과를 본 상태면 완료 화면으로
         if (isLastQuiz && showResult) {
             setCurrentIndex(displayQuizzes.length);
         } else {
@@ -149,18 +81,34 @@ export default function QuizView({ quizzes, onAnswerQuiz, onDeleteQuiz }: QuizVi
     };
 
     const handleCheckSource = () => {
-        if (currentQuiz) {
+        if (currentQuiz?.sourceUrl) {
             window.open(currentQuiz.sourceUrl, '_blank');
         }
     };
 
     const handleRestart = () => {
+        const resetQuizzes = displayQuizzes.map((quiz) => ({
+            ...quiz,
+            userAnswer: undefined,
+            isCorrect: undefined,
+        }));
+        setDisplayQuizzes(resetQuizzes);
         setCurrentIndex(0);
         setSelectedAnswer(null);
         setShowResult(false);
     };
 
-    if (displayQuizzes.length === 0) {
+    const handleDeleteQuiz = async (quizId: string) => {
+        try {
+            await quizAPI.deleteQuiz(quizId);
+            setDisplayQuizzes(displayQuizzes.filter((q) => q.id !== quizId));
+        } catch (err) {
+            console.error('퀴즈 삭제 실패:', err);
+        }
+    };
+
+    // 로딩 상태
+    if (loading) {
         return (
             <div className="quiz-view">
                 <div className="quiz-header">
@@ -177,6 +125,44 @@ export default function QuizView({ quizzes, onAnswerQuiz, onDeleteQuiz }: QuizVi
         );
     }
 
+    // 에러 상태
+    if (error) {
+        return (
+            <div className="quiz-view">
+                <div className="quiz-header">
+                    <div>
+                        <h3>학습 퀴즈</h3>
+                        <p className="quiz-subtitle">내가 저장해둔 출처를 기반으로 학습해보세요</p>
+                    </div>
+                </div>
+                <div className="empty-state">
+                    <div className="empty-icon">❌</div>
+                    <p className="empty-title">{error}</p>
+                </div>
+            </div>
+        );
+    }
+
+    // 퀴즈가 없는 상태
+    if (displayQuizzes.length === 0) {
+        return (
+            <div className="quiz-view">
+                <div className="quiz-header">
+                    <div>
+                        <h3>학습 퀴즈</h3>
+                        <p className="quiz-subtitle">내가 저장해둔 출처를 기반으로 학습해보세요</p>
+                    </div>
+                </div>
+                <div className="empty-state">
+                    <div className="empty-icon">📭</div>
+                    <p className="empty-title">아직 퀴즈가 없습니다</p>
+                    <p className="empty-subtitle">대화를 통해 퀴즈를 생성해보세요!</p>
+                </div>
+            </div>
+        );
+    }
+
+    // 완료 화면
     if (currentIndex >= displayQuizzes.length) {
         return (
             <div className="quiz-view">
@@ -278,7 +264,7 @@ export default function QuizView({ quizzes, onAnswerQuiz, onDeleteQuiz }: QuizVi
                                     </button>
                                     <button
                                         className="delete-item-btn"
-                                        onClick={() => onDeleteQuiz(quiz.id)}
+                                        onClick={() => handleDeleteQuiz(quiz.id)}
                                         title="삭제"
                                     >
                                         <svg
@@ -386,26 +372,28 @@ export default function QuizView({ quizzes, onAnswerQuiz, onDeleteQuiz }: QuizVi
                                         </p>
                                     </div>
                                     <div className="result-actions">
-                                        <button
-                                            className="source-btn secondary"
-                                            onClick={handleCheckSource}
-                                        >
-                                            <svg
-                                                width="16"
-                                                height="16"
-                                                viewBox="0 0 24 24"
-                                                fill="none"
-                                                stroke="currentColor"
+                                        {currentQuiz.sourceUrl && (
+                                            <button
+                                                className="source-btn secondary"
+                                                onClick={handleCheckSource}
                                             >
-                                                <path
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    strokeWidth={2}
-                                                    d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                                                />
-                                            </svg>
-                                            출처 확인하기
-                                        </button>
+                                                <svg
+                                                    width="16"
+                                                    height="16"
+                                                    viewBox="0 0 24 24"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                >
+                                                    <path
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                        strokeWidth={2}
+                                                        d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                                                    />
+                                                </svg>
+                                                출처 확인하기
+                                            </button>
+                                        )}
                                         <button className="next-btn" onClick={handleNextQuiz}>
                                             {isLastQuiz ? '최종 결과 보기' : '다음 문제'}
                                             <svg
@@ -444,33 +432,39 @@ export default function QuizView({ quizzes, onAnswerQuiz, onDeleteQuiz }: QuizVi
                                             {currentQuiz.explanation}
                                         </p>
                                     </div>
-                                    <div className="source-recommendation">
-                                        <p className="recommendation-text">
-                                            더 자세한 내용은 내가 북마크한 출처를 확인해보세요!
-                                        </p>
-                                        <p className="source-title">{currentQuiz.sourceTitle}</p>
-                                    </div>
+                                    {currentQuiz.sourceTitle && (
+                                        <div className="source-recommendation">
+                                            <p className="recommendation-text">
+                                                더 자세한 내용은 내가 북마크한 출처를 확인해보세요!
+                                            </p>
+                                            <p className="source-title">
+                                                {currentQuiz.sourceTitle}
+                                            </p>
+                                        </div>
+                                    )}
                                     <div className="result-actions">
-                                        <button
-                                            className="source-btn primary"
-                                            onClick={handleCheckSource}
-                                        >
-                                            <svg
-                                                width="16"
-                                                height="16"
-                                                viewBox="0 0 24 24"
-                                                fill="none"
-                                                stroke="currentColor"
+                                        {currentQuiz.sourceUrl && (
+                                            <button
+                                                className="source-btn primary"
+                                                onClick={handleCheckSource}
                                             >
-                                                <path
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    strokeWidth={2}
-                                                    d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                                                />
-                                            </svg>
-                                            출처에서 복습하기
-                                        </button>
+                                                <svg
+                                                    width="16"
+                                                    height="16"
+                                                    viewBox="0 0 24 24"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                >
+                                                    <path
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                        strokeWidth={2}
+                                                        d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                                                    />
+                                                </svg>
+                                                출처에서 복습하기
+                                            </button>
+                                        )}
                                         <button className="next-btn" onClick={handleNextQuiz}>
                                             {isLastQuiz ? '최종 결과 보기' : '다음 문제'}
                                             <svg
