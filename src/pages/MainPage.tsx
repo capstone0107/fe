@@ -79,7 +79,7 @@ function MainPage() {
                 url: bm.source_url,
                 snippet: bm.summary,
                 timestamp: new Date(bm.created_at).getTime(),
-                question: '기타',
+                question: bm.question,
                 knowledge_id: bm.knowledge_id,
             }));
             setBookmarks(loadedBookmarks);
