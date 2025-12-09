@@ -14,6 +14,7 @@ export interface BookmarkResponse {
     knowledge_id: string;
     source_url: string;
     title: string;
+    question: string;
     summary: string;
     model_version: string | null;
     created_at: string;
@@ -65,10 +66,7 @@ export const bookmarkAPI = {
     },
 
     // 북마크 수정
-    update: async (
-        bookmarkId: number,
-        data: BookmarkUpdateRequest,
-    ): Promise<BookmarkResponse> => {
+    update: async (bookmarkId: number, data: BookmarkUpdateRequest): Promise<BookmarkResponse> => {
         const response = await apiClient.patch<BookmarkResponse>(`/bookmarks/${bookmarkId}`, data);
         return response.data;
     },
