@@ -281,3 +281,75 @@
         transform: scale(1);
     }
 }
+
+/* 마크다운 스타일 */
+.document-content h1,
+.document-content h2,
+.document-content h3,
+.document-content h4 {
+    color: #1a1a2e;
+    margin-top: 24px;
+    margin-bottom: 12px;
+}
+
+.document-content h2 {
+    font-size: 1.5rem;
+    border-bottom: 1px solid #e5e7eb;
+    padding-bottom: 8px;
+}
+
+.document-content h3 {
+    font-size: 1.25rem;
+}
+
+.document-content p {
+    margin-bottom: 16px;
+    line-height: 1.8;
+}
+
+.document-content ul,
+.document-content ol {
+    margin-bottom: 16px;
+    padding-left: 24px;
+}
+
+.document-content li {
+    margin-bottom: 8px;
+    line-height: 1.6;
+}
+
+.document-content code {
+    background: #e5e7eb;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'Fira Code', monospace;
+    font-size: 0.875rem;
+}
+
+.document-content pre {
+    background: #1a1a2e;
+    color: #e5e7eb;
+    padding: 16px;
+    border-radius: 8px;
+    overflow-x: auto;
+    margin-bottom: 16px;
+}
+
+.document-content pre code {
+    background: none;
+    padding: 0;
+    color: inherit;
+}
+
+.document-content strong {
+    font-weight: 600;
+    color: #1a1a2e;
+}
+
+.document-content blockquote {
+    border-left: 4px solid #6366f1;
+    padding-left: 16px;
+    margin: 16px 0;
+    color: #6b7280;
+    font-style: italic;
+}
