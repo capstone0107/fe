@@ -17,7 +17,7 @@ import type {
     VerifiedConversation,
     ViewType,
     Quiz,
-    GraphData
+    GraphData,
 } from '../types';
 import apiClient from '../api/client';
 
@@ -272,7 +272,6 @@ const SAMPLE_CONVERSATIONS: VerifiedConversation[] = [
     },
 ];
 
-
 function MainPage() {
     // View States
     const [currentView, setCurrentView] = useState<ViewType>('chat');
@@ -317,7 +316,7 @@ function MainPage() {
     const loadBookmarks = async () => {
         try {
             const response = await bookmarkAPI.list(1, 100);
-            
+
             const loadedBookmarks: BookmarkedSource[] = response.bookmarks.map((bm) => ({
                 title: bm.title,
                 url: bm.source_url,
@@ -326,25 +325,24 @@ function MainPage() {
                 question: '기타',
                 knowledge_id: bm.knowledge_id,
             }));
-            
+
             setBookmarks(loadedBookmarks);
             console.log('✅ 북마크 로드 완료:', loadedBookmarks.length, '개');
         } catch (error) {
             console.error('북마크 로드 실패:', error);
         } finally {
-
         }
     };
 
     const startNewConversation = async () => {
         const newId = `auto-${Date.now()}`;
-        
+
         try {
             // ⭐ apiClient로 변경
             const response = await apiClient.post<{ conversation_id: string }>('/search/start', {
-                conversation_id: newId 
+                conversation_id: newId,
             });
-            
+
             const data = response.data;
             setCurrentConversationId(data.conversation_id);
             console.log('✨ 새 대화 시작:', data.conversation_id);
@@ -365,10 +363,10 @@ function MainPage() {
                 await apiClient.delete('/bookmarks', {
                     data: {
                         title: source.title,
-                        url: source.url
-                    }
+                        url: source.url,
+                    },
                 });
-                
+
                 const newBookmarks = bookmarks.filter((b) => `${b.title}-${b.url}` !== sourceId);
                 setBookmarks(newBookmarks);
                 localStorage.setItem('bookmarks', JSON.stringify(newBookmarks));
@@ -382,7 +380,7 @@ function MainPage() {
                     summary: source.snippet || '',
                     question: question, // ✅ 사용자 질문 추가
                     knowledge_id: currentConversationId,
-                    model_version: 'v1.0' // 예시 모델 버전
+                    model_version: 'v1.0', // 예시 모델 버전
                 });
 
                 const newBookmarks = [
@@ -393,7 +391,7 @@ function MainPage() {
                         question: question,
                     },
                 ];
-                
+
                 setBookmarks(newBookmarks);
                 localStorage.setItem('bookmarks', JSON.stringify(newBookmarks));
             }
@@ -440,8 +438,8 @@ function MainPage() {
 
         // 전체 대화 보기
         if (selectedFocus === 'all') {
-        return conversation.messages ?? []; 
-    }
+            return conversation.messages ?? [];
+        }
 
         // 특정 Focus 필터링
         const focus = conversation.focuses?.find((f) => f.id === selectedFocus);
@@ -450,7 +448,6 @@ function MainPage() {
         // Focus의 messageIds에 해당하는 메시지만 필터링
         return (conversation.messages ?? []).filter((msg) => focus.messageIds.includes(msg.id));
     }, [selectedConversation, selectedFocus, verifiedConversations, messages]);
-        
 
     // Bookmark Management
     const findQuestionForSource = (source: Source): string => {
@@ -467,7 +464,6 @@ function MainPage() {
                         }
                     }
                 }
-                
             }
         }
         return '기타';
@@ -512,9 +508,13 @@ function MainPage() {
 
         try {
             // ⭐ apiClient로 변경
-            const response = await apiClient.post<{ message_id: string; answer: string; sources: Source[] }>('/search/query', {
+            const response = await apiClient.post<{
+                message_id: string;
+                answer: string;
+                sources: Source[];
+            }>('/search/query', {
                 conversation_id: currentConversationId,
-                question: input
+                question: input,
             });
 
             // axios는 !response.ok 체크 불필요 (에러 시 catch로 이동)
@@ -528,7 +528,6 @@ function MainPage() {
                 sources: data.sources || [],
             };
             setMessages((prev) => [...prev, assistantMessage]);
-            
         } catch (error) {
             console.error('Error:', error);
             const errorMessage: Message = {
@@ -548,7 +547,8 @@ function MainPage() {
         const conversationMessages = messages.filter(
             (m) =>
                 m.role !== 'assistant' ||
-                m.content !== '안녕하세요! 레빗홀과 함께 대화에서 시작되는 학습을 경험해보세요. 무엇이 궁금하신가요?',
+                m.content !==
+                    '안녕하세요! 레빗홀과 함께 대화에서 시작되는 학습을 경험해보세요. 무엇이 궁금하신가요?',
         );
 
         try {
@@ -556,7 +556,7 @@ function MainPage() {
             // focuses 타입 추론을 위해 any 또는 구체적 타입 사용 가능
             const response = await apiClient.post<{ focuses: any[] }>('/search/finalize', {
                 conversation_id: currentConversationId,
-                user_title: conversationTitle
+                user_title: conversationTitle,
             });
 
             const data = response.data;
@@ -583,14 +583,15 @@ function MainPage() {
                 {
                     id: generateId(),
                     role: 'assistant',
-                    content: '안녕하세요! 레빗홀과 함께 대화에서 시작되는 학습을 경험해보세요. 무엇이 궁금하신가요?',
+                    content:
+                        '안녕하세요! 레빗홀과 함께 대화에서 시작되는 학습을 경험해보세요. 무엇이 궁금하신가요?',
                     sources: [],
                 },
             ]);
             setCurrentView('verified');
-            
+
             // 새 대화 시작
-            await startNewConversation();            
+            await startNewConversation();
         } catch (error) {
             console.error('저장 실패:', error);
             alert('대화 저장에 실패했습니다. 다시 시도해주세요.');
@@ -602,7 +603,8 @@ function MainPage() {
             {
                 id: generateId(),
                 role: 'assistant',
-                content: '안녕하세요! 레빗홀과 함께 대화에서 시작되는 학습을 경험해보세요. 무엇이 궁금하신가요?',
+                content:
+                    '안녕하세요! 레빗홀과 함께 대화에서 시작되는 학습을 경험해보세요. 무엇이 궁금하신가요?',
                 sources: [],
             },
         ]);
@@ -656,10 +658,10 @@ function MainPage() {
     const handleFocusSelect = (conversationId: string, focusId: string) => {
         console.log('Clicked Conversation ID:', conversationId); // 요구사항 2
         console.log('Clicked Focus ID:', focusId); // 요구사항 2
-        
+
         setSelectedConversation(conversationId);
         setSelectedFocus(focusId);
-        
+
         // setCurrentView('chat'); // 요구사항 1: 대화창 활성화(화면 전환) 코드 제거
     };
 
@@ -684,14 +686,14 @@ function MainPage() {
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
             const newGraphData = await response.json();
-            
+
             // Save to cache
-            const updatedConversations = verifiedConversations.map(c => 
-                c.id === conversation.id ? { ...c, graphData: newGraphData } : c
+            const updatedConversations = verifiedConversations.map((c) =>
+                c.id === conversation.id ? { ...c, graphData: newGraphData } : c,
             );
             setVerifiedConversations(updatedConversations);
             localStorage.setItem('verifiedConversations', JSON.stringify(updatedConversations));
-            
+
             setGraphData(newGraphData);
         } catch (error) {
             console.error('Error fetching graph:', error);
@@ -710,8 +712,8 @@ function MainPage() {
         try {
             const response = await fetch('http://127.0.0.1:8000/graph', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ messages: conv.messages })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ messages: conv.messages }),
             });
             if (!response.ok) throw new Error('API Error');
             return await response.json();
@@ -731,14 +733,16 @@ function MainPage() {
         setIsCombining(true);
 
         try {
-            const selectedConvs = verifiedConversations.filter(c => selectedIds.includes(c.id));
-            
+            const selectedConvs = verifiedConversations.filter((c) => selectedIds.includes(c.id));
+
             // 1. Get graphs for all selected items (fetch if missing)
-            const graphPromises = selectedConvs.map(conv => getOrGenerateGraph(conv));
-            const graphs = (await Promise.all(graphPromises)).filter((g): g is GraphData => g !== null);
+            const graphPromises = selectedConvs.map((conv) => getOrGenerateGraph(conv));
+            const graphs = (await Promise.all(graphPromises)).filter(
+                (g): g is GraphData => g !== null,
+            );
 
             if (graphs.length < 2) {
-                throw new Error("통합할 수 있는 유효한 그래프가 부족합니다.");
+                throw new Error('통합할 수 있는 유효한 그래프가 부족합니다.');
             }
 
             // 2. Call Combined API
@@ -758,7 +762,7 @@ function MainPage() {
                 timestamp: Date.now(),
                 type: 'combined',
                 sourceIds: selectedIds,
-                graphData: combinedGraphData // Save directly
+                graphData: combinedGraphData, // Save directly
             };
 
             // 4. Save to List
@@ -768,7 +772,6 @@ function MainPage() {
 
             // 5. Show it
             setGraphData(combinedGraphData);
-
         } catch (error) {
             console.error(error);
             alert('통합 그래프 생성 실패: ' + error);
@@ -878,13 +881,7 @@ function MainPage() {
                     />
                 )}
 
-                {currentView === 'quiz' && (
-                    <QuizView
-                        quizzes={quizzes}
-                        onAnswerQuiz={handleAnswerQuiz}
-                        onDeleteQuiz={handleDeleteQuiz}
-                    />
-                )}
+                {currentView === 'quiz' && <QuizView />}
             </main>
 
             <SaveDialog
@@ -901,20 +898,25 @@ function MainPage() {
             {showGraphModal && (
                 <div className="dialog-overlay" onClick={() => setShowGraphModal(false)}>
                     <div className="dialog graph-dialog" onClick={(e) => e.stopPropagation()}>
-                        <h3>{isCombining ? "통합 지식 그래프" : "지식 그래프"}</h3>
+                        <h3>{isCombining ? '통합 지식 그래프' : '지식 그래프'}</h3>
                         <div className="graph-content">
                             {isGraphLoading ? (
                                 <div className="loading-state">
-                                    <div className="typing"><span></span><span></span><span></span></div>
-                                    <p>{isCombining 
-                                        ? "여러 대화의 지식을 하나로 통합하고 있습니다..." 
-                                        : "AI가 대화를 분석하여 그래프를 그리고 있습니다..."}
+                                    <div className="typing">
+                                        <span></span>
+                                        <span></span>
+                                        <span></span>
+                                    </div>
+                                    <p>
+                                        {isCombining
+                                            ? '여러 대화의 지식을 하나로 통합하고 있습니다...'
+                                            : 'AI가 대화를 분석하여 그래프를 그리고 있습니다...'}
                                     </p>
                                 </div>
                             ) : graphData ? (
-                                <ConversationGraph 
-                                    data={graphData} 
-                                    onClose={() => setShowGraphModal(false)} 
+                                <ConversationGraph
+                                    data={graphData}
+                                    onClose={() => setShowGraphModal(false)}
                                 />
                             ) : (
                                 <p className="error-message">데이터를 불러오지 못했습니다.</p>
