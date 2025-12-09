@@ -782,28 +782,28 @@ function MainPage() {
         }
     };
 
-    // Quiz Management
-    const handleAnswerQuiz = (quizId: string, answerIndex: number) => {
-        const updatedQuizzes = quizzes.map((quiz) => {
-            if (quiz.id === quizId) {
-                return {
-                    ...quiz,
-                    userAnswer: answerIndex,
-                    isCorrect: answerIndex === quiz.correctAnswer,
-                };
-            }
-            return quiz;
-        });
+    // // Quiz Management
+    // const handleAnswerQuiz = (quizId: string, answerIndex: number) => {
+    //     const updatedQuizzes = quizzes.map((quiz) => {
+    //         if (quiz.id === quizId) {
+    //             return {
+    //                 ...quiz,
+    //                 userAnswer: answerIndex,
+    //                 isCorrect: answerIndex === quiz.correctAnswer,
+    //             };
+    //         }
+    //         return quiz;
+    //     });
 
-        setQuizzes(updatedQuizzes);
-        localStorage.setItem('quizzes', JSON.stringify(updatedQuizzes));
-    };
+    //     setQuizzes(updatedQuizzes);
+    //     localStorage.setItem('quizzes', JSON.stringify(updatedQuizzes));
+    // };
 
-    const handleDeleteQuiz = (quizId: string) => {
-        const updatedQuizzes = quizzes.filter((quiz) => quiz.id !== quizId);
-        setQuizzes(updatedQuizzes);
-        localStorage.setItem('quizzes', JSON.stringify(updatedQuizzes));
-    };
+    // const handleDeleteQuiz = (quizId: string) => {
+    //     const updatedQuizzes = quizzes.filter((quiz) => quiz.id !== quizId);
+    //     setQuizzes(updatedQuizzes);
+    //     localStorage.setItem('quizzes', JSON.stringify(updatedQuizzes));
+    // };
 
     // Prepare grouped bookmarks
     const groupedBookmarks = getGroupedBookmarks();
