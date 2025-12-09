@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import './DocumentView.css';
 import type { Document } from '../../types';
 import { documentAPI } from '../../api/document';
+import ReactMarkdown from 'react-markdown';
 
 export default function DocumentView() {
     const [documents, setDocuments] = useState<Document[]>([]);
@@ -125,7 +126,7 @@ export default function DocumentView() {
                     </div>
 
                     <div className="document-content">
-                        <pre>{selectedDoc.content}</pre>
+                        <ReactMarkdown>{selectedDoc.content}</ReactMarkdown>
                     </div>
 
                     <div className="document-sources">
