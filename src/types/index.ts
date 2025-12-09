@@ -77,7 +77,16 @@ export interface Quiz {
     isCorrect?: boolean;
 }
 
-export type ViewType = 'chat' | 'bookmarks' | 'verified' | 'quiz';
+export interface Document {
+    id: string;
+    title: string;
+    content: string;
+    sourceTitle: string;
+    sourceUrl: string;
+    relatedQuestion: string;
+}
+
+export type ViewType = 'chat' | 'bookmarks' | 'verified' | 'quiz' | 'document';
 
 export interface ConversationMessage {
     id: number;

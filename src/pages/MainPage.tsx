@@ -6,6 +6,7 @@ import ChatView from '../components/ChatView/ChatView';
 import BookmarksView from '../components/BookmarksView/BookmarksView';
 import VerifiedView from '../components/VerifiedView/VerifiedView';
 import QuizView from '../components/QuizView/QuizView';
+import DocumentView from '../components/DocumentView/DocumentView';
 import SaveDialog from '../components/SaveDialog/SaveDialog';
 import ConversationGraph from '../conversationGraph';
 import { bookmarkAPI } from '../api/bookmark';
@@ -549,6 +550,7 @@ function MainPage() {
                 )}
 
                 {currentView === 'quiz' && <QuizView />}
+                {currentView === 'document' && <DocumentView />}
             </main>
 
             <SaveDialog
