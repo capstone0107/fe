@@ -103,7 +103,7 @@ export default function QuizView({ quizzes, onAnswerQuiz, onDeleteQuiz }: QuizVi
     const isLastQuiz = currentIndex === displayQuizzes.length - 1;
 
     useEffect(() => {
-        if (displayQuizzes.length > 0 && currentIndex >= displayQuizzes.length) {
+        if (displayQuizzes.length > 0 && currentIndex > displayQuizzes.length) {
             setCurrentIndex(displayQuizzes.length - 1);
         }
     }, [displayQuizzes.length, currentIndex]);
