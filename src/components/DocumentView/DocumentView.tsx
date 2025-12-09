@@ -1,54 +1,38 @@
 import { useState, useEffect } from 'react';
 import './DocumentView.css';
 import type { Document } from '../../types';
-
-const MOCK_DOCUMENTS: Document[] = [
-    {
-        id: 'doc-1',
-        title: 'React Hook의 이해와 활용',
-        content: `## React Hook이란?
-
-            React Hook은 함수형 컴포넌트에서 상태 관리와 생명주기 기능을 사용할 수 있게 해주는 기능입니다.
-
-            ### 주요 Hook 종류
-
-            **useState**
-            - 컴포넌트의 상태를 관리하는 가장 기본적인 Hook
-            - const [state, setState] = useState(initialValue) 형태로 사용
-            - 상태가 변경되면 컴포넌트가 리렌더링됨
-
-            **useEffect**
-            - 부수 효과(side effect)를 처리하는 Hook
-            - 데이터 fetching, 구독 설정, DOM 조작 등에 사용
-            - 의존성 배열을 통해 실행 시점을 제어
-
-            **useContext**
-            - Context API와 함께 사용하여 전역 상태를 관리
-            - props drilling 문제를 해결
-
-            ### 사용 시 주의사항
-
-            1. Hook은 최상위 레벨에서만 호출해야 함
-            2. React 함수 컴포넌트 내에서만 호출해야 함
-            3. 조건문이나 반복문 안에서 호출하면 안 됨
-        `,
-        sourceTitle: 'React 공식 문서 - Hooks 소개',
-        sourceUrl: 'https://react.dev/reference/react',
-        relatedQuestion: 'React Hook에 대해 알려주세요',
-    },
-];
+import { documentAPI } from '../../api/document';
 
 export default function DocumentView() {
     const [documents, setDocuments] = useState<Document[]>([]);
     const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        // TODO: API 호출로 변경
-        setTimeout(() => {
-            setDocuments(MOCK_DOCUMENTS);
-            setLoading(false);
-        }, 500);
+        const fetchDocuments = async () => {
+            try {
+                setLoading(true);
+                setError(null);
+                const response = await documentAPI.getAllDocuments();
+                const fetchedDocs: Document[] = response.documents.map((doc: any) => ({
+                    id: String(doc.id),
+                    title: doc.title,
+                    content: doc.content,
+                    sourceTitle: doc.source_title,
+                    sourceUrl: doc.source_url,
+                    relatedQuestion: doc.related_question,
+                }));
+                setDocuments(fetchedDocs);
+            } catch (err) {
+                console.error('도큐먼트 로딩 실패:', err);
+                setError('도큐먼트를 불러오는데 실패했습니다.');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchDocuments();
     }, []);
 
     const handleOpenSource = (url: string) => {
@@ -69,6 +53,21 @@ export default function DocumentView() {
                         <span></span>
                     </div>
                     <p>도큐먼트를 불러오는 중...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="document-view">
+                <div className="document-header">
+                    <h3>학습 도큐먼트</h3>
+                    <p className="document-subtitle">북마크 기반으로 정리된 학습 자료</p>
+                </div>
+                <div className="empty-state">
+                    <div className="empty-icon">❌</div>
+                    <p className="empty-title">{error}</p>
                 </div>
             </div>
         );
