@@ -13,6 +13,7 @@ export default function Header({ currentView, showSaveButton, onSaveClick }: Hea
         bookmarks: '북마크',
         verified: '대화 내용',
         quiz: '퀴즈',
+        document: '도큐먼트',
     };
 
     return (
