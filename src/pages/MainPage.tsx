@@ -298,9 +298,8 @@ function MainPage() {
                 },
             ]);
             setCurrentView('verified');
-            await startNewConversation();
+            startNewConversation();
         } catch (error) {
-            console.error('저장 실패:', error);
             alert('대화 저장에 실패했습니다. 다시 시도해주세요.');
         }
     };
