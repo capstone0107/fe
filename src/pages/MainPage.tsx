@@ -26,9 +26,41 @@ function generateId(): string {
     return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 }
 
-// 샘플 대화 데이터
+// 샘플 대화 데이터 (폴백용)
 const SAMPLE_CONVERSATIONS: VerifiedConversation[] = [
-    // ... (기존 샘플 데이터 유지)
+    {
+        id: 'sample-conv-1',
+        title: '운영체제 관련 질의',
+        timestamp: Date.now() - 86400000 * 2,
+        messages: [
+            {
+                id: 'msg-1',
+                role: 'user',
+                content: 'FCFS 스케줄링 알고리즘에 대해 설명해주세요.',
+            },
+            {
+                id: 'msg-2',
+                role: 'assistant',
+                content:
+                    'FCFS(First-Come, First-Served)는 가장 간단한 CPU 스케줄링 알고리즘입니다.',
+                sources: [
+                    {
+                        title: '운영체제 - CPU 스케줄링',
+                        url: 'https://example.com/os-scheduling',
+                        snippet: 'FCFS는 비선점형 스케줄링 방식입니다.',
+                    },
+                ],
+            },
+        ],
+        focuses: [
+            {
+                id: 'focus-cpu-scheduling',
+                name: 'CPU 스케줄링 기술 최적화',
+                messageIds: ['msg-1', 'msg-2'],
+                questionTags: ['FCFS 알고리즘'],
+            },
+        ],
+    },
 ];
 
 function MainPage() {
@@ -101,21 +133,143 @@ function MainPage() {
         }
     };
 
-    // Load saved data on mount
+    // ✨ Load saved conversations from server on mount
     useEffect(() => {
-        const savedBookmarks = localStorage.getItem('bookmarks');
-        if (savedBookmarks) {
-            setBookmarks(JSON.parse(savedBookmarks));
-        }
-
-        const savedConversations = localStorage.getItem('verifiedConversations');
-        if (savedConversations) {
-            setVerifiedConversations(JSON.parse(savedConversations));
-        } else {
-            setVerifiedConversations(SAMPLE_CONVERSATIONS);
-            localStorage.setItem('verifiedConversations', JSON.stringify(SAMPLE_CONVERSATIONS));
-        }
+        loadVerifiedConversations();
     }, []);
+
+    // ✨ 서버에서 저장된 대화 목록 가져오기
+    const loadVerifiedConversations = async () => {
+        try {
+            console.log('📡 서버에서 저장된 대화 목록을 가져옵니다...');
+            
+            // Step 1: GET /api/focus/all - 전체 대화 목록과 Focus 정보 가져오기
+            const response = await apiClient.get<{
+                conversations: {
+                    [key: string]: {
+                        title: string;
+                        summary: string | null;
+                        timestamp: string;
+                        user_id: number;
+                        focus_count: number;
+                        focuses: Array<{
+                            id: string;
+                            name: string;
+                            questionTags: string[];
+                            messageCount: number;
+                        }>;
+                    };
+                };
+                metadata: {
+                    total_conversations: number;
+                    current_limit: number;
+                    current_offset: number;
+                    filtered_by_user: boolean;
+                    user_id: number | null;
+                };
+            }>('/api/focus/all?limit=50&offset=0');
+
+            const { conversations: conversationsData } = response.data;
+            
+            console.log(`✅ ${Object.keys(conversationsData).length}개의 대화를 찾았습니다.`);
+
+            // Step 2: 각 대화에 대해 상세 내용 가져오기
+            const conversationsWithDetails: VerifiedConversation[] = [];
+
+            for (const [conversationId, convInfo] of Object.entries(conversationsData)) {
+                try {
+                    console.log(`🔍 대화 "${convInfo.title}" 상세 내용 로드 중...`);
+                    
+                    // GET /search/conversation/{conversation_id} - 전체 메시지 및 Focus 상세 정보
+                    const detailResponse = await apiClient.get<{
+                        conversation: {
+                            id: string;
+                            title: string;
+                            summary: string | null;
+                            is_saved: boolean;
+                            user_id: number;
+                            timestamp: string;
+                            messages: Array<{
+                                id: string;
+                                role: 'user' | 'assistant';
+                                content: string;
+                                sources: Array<{
+                                    title: string;
+                                    url: string;
+                                    snippet?: string;
+                                }> | null;
+                                message_order: number;
+                            }>;
+                            focuses: Array<{
+                                id: string;
+                                name: string;
+                                messageIds: string[];
+                                questionTags: string[];
+                            }>;
+                        };
+                    }>(`/search/conversation/${conversationId}`);
+
+                    const convDetail = detailResponse.data.conversation;
+
+                    // VerifiedConversation 형식으로 변환
+                    const verifiedConv: VerifiedConversation = {
+                        id: convDetail.id,
+                        title: convDetail.title,
+                        timestamp: new Date(convDetail.timestamp).getTime(),
+                        messages: convDetail.messages.map(msg => ({
+                            id: msg.id,
+                            role: msg.role,
+                            content: msg.content,
+                            sources: msg.sources || undefined,
+                        })),
+                        focuses: convDetail.focuses.map(focus => ({
+                            id: focus.id,
+                            name: focus.name,
+                            messageIds: focus.messageIds,
+                            questionTags: focus.questionTags,
+                        })),
+                    };
+
+                    conversationsWithDetails.push(verifiedConv);
+                    console.log(`✅ "${convInfo.title}" 로드 완료 (${convDetail.messages.length}개 메시지)`);
+
+                } catch (error) {
+                    console.error(`❌ 대화 ${conversationId} 상세 로드 실패:`, error);
+                    // 실패한 경우 기본 정보만 저장
+                    conversationsWithDetails.push({
+                        id: conversationId,
+                        title: convInfo.title,
+                        timestamp: new Date(convInfo.timestamp).getTime(),
+                        messages: [],
+                        focuses: convInfo.focuses.map(f => ({
+                            id: f.id,
+                            name: f.name,
+                            messageIds: [],
+                            questionTags: f.questionTags,
+                        })),
+                    });
+                }
+            }
+
+            // Step 3: 상태 업데이트
+            setVerifiedConversations(conversationsWithDetails);
+            console.log(`✨ 총 ${conversationsWithDetails.length}개의 대화 로드 완료`);
+
+        } catch (error) {
+            console.error('❌ 저장된 대화 목록 로드 실패:', error);
+            
+            // 에러 시 localStorage 폴백 또는 샘플 데이터
+            const savedConversations = localStorage.getItem('verifiedConversations');
+            if (savedConversations) {
+                console.log('💾 localStorage에서 대화 데이터를 로드합니다...');
+                setVerifiedConversations(JSON.parse(savedConversations));
+            } else {
+                console.log('📚 샘플 대화 데이터를 로드합니다...');
+                setVerifiedConversations(SAMPLE_CONVERSATIONS);
+                localStorage.setItem('verifiedConversations', JSON.stringify(SAMPLE_CONVERSATIONS));
+            }
+        }
+    };
 
     // 표시할 메시지 계산 (Focus 필터링)
     const displayedMessages = useMemo(() => {
