@@ -20,6 +20,7 @@ import type {
     GraphData,
 } from '../types';
 import apiClient from '../api/client';
+import { graphAPI } from '../api/graph';
 
 // UUID 생성 함수
 function generateId(): string {
@@ -518,57 +519,53 @@ function MainPage() {
         setSelectedConversation(conversationId);
         setSelectedFocus(focusId);
     };
-
-    // Graph 관련 함수들
     const getOrGenerateGraph = async (conv: VerifiedConversation): Promise<GraphData | null> => {
+        // 이미 그래프 데이터가 있으면 반환
         if (conv.graphData) return conv.graphData;
+        
+        // 통합 대화이거나 메시지가 없으면 null 반환
         if (conv.type === 'combined' || !conv.messages) return null;
 
         try {
-            const response = await fetch('http://127.0.0.1:8000/graph', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ messages: conv.messages }),
-            });
-            if (!response.ok) throw new Error('API Error');
-            return await response.json();
-        } catch (e) {
-            console.error(e);
+            // ✨ fetch 대신 graphAPI 사용
+            const graphData = await graphAPI.generateGraph(conv.messages);
+            return graphData;
+        } catch (error) {
+            console.error('그래프 생성 실패:', error);
             return null;
         }
     };
 
+    // ✨ handleVisualize 함수 수정
     const handleVisualize = async (conversation: VerifiedConversation) => {
+        // 이미 그래프 데이터가 있으면 바로 표시
         if (conversation.graphData) {
             setGraphData(conversation.graphData);
             setShowGraphModal(true);
             return;
         }
 
+        // 로딩 상태 시작
         setIsGraphLoading(true);
         setShowGraphModal(true);
         setGraphData(null);
 
         try {
-            const response = await fetch('http://127.0.0.1:8000/graph', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ messages: conversation.messages }),
-            });
+            // ✨ fetch 대신 graphAPI 사용
+            const newGraphData = await graphAPI.generateGraph(conversation.messages || []);
 
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-
-            const newGraphData = await response.json();
-
+            // 대화 목록에 그래프 데이터 저장
             const updatedConversations = verifiedConversations.map((c) =>
-                c.id === conversation.id ? { ...c, graphData: newGraphData } : c,
+                c.id === conversation.id ? { ...c, graphData: newGraphData } : c
             );
             setVerifiedConversations(updatedConversations);
             localStorage.setItem('verifiedConversations', JSON.stringify(updatedConversations));
 
             setGraphData(newGraphData);
+            
+            console.log('✅ 그래프 생성 완료');
         } catch (error) {
-            console.error('Error fetching graph:', error);
+            console.error('❌ 그래프 생성 실패:', error);
             alert('그래프를 불러오는데 실패했습니다.');
             setShowGraphModal(false);
         } finally {
@@ -576,8 +573,12 @@ function MainPage() {
         }
     };
 
+    // ✨ handleCombine 함수 수정
     const handleCombine = async (selectedIds: string[]) => {
-        if (selectedIds.length < 2) return;
+        if (selectedIds.length < 2) {
+            alert('최소 2개 이상의 대화를 선택해주세요.');
+            return;
+        }
 
         setIsGraphLoading(true);
         setShowGraphModal(true);
@@ -585,25 +586,31 @@ function MainPage() {
         setIsCombining(true);
 
         try {
-            const selectedConvs = verifiedConversations.filter((c) => selectedIds.includes(c.id));
+            // Step 1: 선택된 대화들의 그래프 데이터 수집
+            console.log(`🔗 ${selectedIds.length}개의 대화를 통합합니다...`);
+            const selectedConvs = verifiedConversations.filter((c) => 
+                selectedIds.includes(c.id)
+            );
+
+            // Step 2: 각 대화의 그래프 생성 (없는 경우)
             const graphPromises = selectedConvs.map((conv) => getOrGenerateGraph(conv));
             const graphs = (await Promise.all(graphPromises)).filter(
-                (g): g is GraphData => g !== null,
+                (g): g is GraphData => g !== null
             );
 
             if (graphs.length < 2) {
                 throw new Error('통합할 수 있는 유효한 그래프가 부족합니다.');
             }
 
-            const response = await fetch('http://127.0.0.1:8000/graph/combined', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ graphs: graphs }),
-            });
+            console.log(`✅ ${graphs.length}개의 그래프를 수집했습니다.`);
 
-            if (!response.ok) throw new Error('Failed to combine');
-            const combinedGraphData = await response.json();
+            // Step 3: 그래프 통합 API 호출
+            // ✨ fetch 대신 graphAPI 사용
+            const combinedGraphData = await graphAPI.combineGraphs(graphs);
 
+            console.log('✅ 통합 그래프 생성 완료');
+
+            // Step 4: 통합된 대화 생성
             const newCombinedConv: VerifiedConversation = {
                 id: `combined-${Date.now()}`,
                 title: `🔗 통합: ${selectedConvs[0].title} 외 ${selectedConvs.length - 1}건`,
@@ -613,21 +620,22 @@ function MainPage() {
                 graphData: combinedGraphData,
             };
 
+            // Step 5: 저장 및 표시
             const updatedList = [newCombinedConv, ...verifiedConversations];
             setVerifiedConversations(updatedList);
             localStorage.setItem('verifiedConversations', JSON.stringify(updatedList));
 
             setGraphData(combinedGraphData);
+            
         } catch (error) {
-            console.error(error);
-            alert('통합 그래프 생성 실패: ' + error);
+            console.error('❌ 통합 그래프 생성 실패:', error);
+            alert(`통합 그래프 생성 실패: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
             setShowGraphModal(false);
         } finally {
             setIsGraphLoading(false);
             setIsCombining(false);
         }
     };
-
     // 계산된 값들
     const groupedBookmarks = getGroupedBookmarks();
     const questionGroups = Object.keys(groupedBookmarks).sort((a, b) => {
