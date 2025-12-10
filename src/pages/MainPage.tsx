@@ -168,7 +168,7 @@ function MainPage() {
                     filtered_by_user: boolean;
                     user_id: number | null;
                 };
-            }>('/api/focus/all?limit=50&offset=0');
+            }>('/focus/all?limit=50&offset=0');
 
             const { conversations: conversationsData } = response.data;
             
