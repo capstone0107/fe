@@ -149,19 +149,11 @@
 
 .document-content {
     background: #f9fafb;
+    color: #374151;
     border-radius: 12px;
     padding: 24px;
     flex: 1;
     overflow-y: auto;
-}
-
-.document-content pre {
-    white-space: pre-wrap;
-    word-wrap: break-word;
-    font-family: inherit;
-    margin: 0;
-    line-height: 1.8;
-    color: #374151;
 }
 
 .document-sources {
